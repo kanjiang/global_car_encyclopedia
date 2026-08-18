@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>汽车大百科 · 全球汽车科普图鉴</title>
+  <meta name="description" content="全球汽车科普图鉴：超跑、豪华轿车、SUV、电动车、经典老爷车，一站式了解各国名车的历史、参数与冷知识。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="bg-fx"></div>
+  <div class="bg-grid"></div>
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <!-- 顶部导航 -->
+  <header class="site-header" id="top">
+    <div class="nav container">
+      <a class="brand" href="#top">
+        <span class="brand-logo">🚘</span>
+        <span class="brand-text">汽车大百科</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#featured">精选</a>
+        <a href="#explore">图鉴</a>
+        <a href="#stats">数据</a>
+        <a href="#about">关于</a>
+      </nav>
+      <button class="theme-toggle" id="themeToggle" title="切换主题" aria-label="切换主题">🌙</button>
+    </div>
+  </header>
+
+  <!-- 首页大图 -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="container hero-inner">
+      <p class="hero-kicker">GLOBAL CAR ENCYCLOPEDIA</p>
+      <h1 class="hero-title">探索全球汽车的<span class="grad">速度与美学</span></h1>
+      <p class="hero-sub">从法拉利到布加迪，从家用卡罗拉到纯电特斯拉——一站式了解各国名车的历史、参数与冷知识。</p>
+      <div class="hero-search">
+        <input type="search" id="heroSearch" placeholder="搜索车型、品牌或国家，如「保时捷」「电动车」「日本」…" autocomplete="off" />
+        <button id="heroSearchBtn">开始探索</button>
+      </div>
+      <div class="hero-chips" id="heroChips"></div>
+    </div>
+  </section>
+
+  <!-- 本周精选车型（大图轮播 + 视差固定） -->
+  <section class="featured" id="featured">
+    <div class="container">
+      <div class="section-head">
+        <span class="section-badge">✦ 本周精选</span>
+        <h2>本周精选车型</h2>
+        <p class="muted">编辑臻选 · 滚动感受视差大图</p>
+      </div>
+    </div>
+    <div class="carousel" id="carousel">
+      <div class="slides" id="carSlides"></div>
+      <button class="carousel-btn prev" id="carPrev" aria-label="上一张">‹</button>
+      <button class="carousel-btn next" id="carNext" aria-label="下一张">›</button>
+      <div class="carousel-dots" id="carDots"></div>
+      <div class="carousel-progress"><span id="carProgress"></span></div>
+    </div>
+  </section>
+
+  <!-- 数据统计 -->
+  <section class="stats" id="stats">
+    <div class="container stats-grid" id="statsGrid"></div>
+  </section>
+
+  <!-- 图鉴主区 -->
+  <section class="explore container" id="explore">
+    <div class="explore-head">
+      <h2>汽车图鉴</h2>
+      <p class="muted">共 <strong id="totalCount">0</strong> 款车型 · 点击卡片查看详情</p>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <span>🔍</span>
+        <input type="search" id="searchInput" placeholder="搜索车型 / 品牌 / 国家…" autocomplete="off" />
+      </div>
+      <div class="filter-group">
+        <label>类型</label>
+        <div class="chips" id="categoryChips"></div>
+      </div>
+      <div class="filter-group">
+        <label>国家</label>
+        <select id="countrySelect"></select>
+      </div>
+      <div class="filter-group">
+        <label>排序</label>
+        <select id="sortSelect">
+          <option value="default">默认</option>
+          <option value="speed-desc">最高车速 ↓</option>
+          <option value="accel-asc">加速最快 ↑</option>
+          <option value="power-desc">马力 ↓</option>
+          <option value="year-asc">年代 ↑</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card-grid" id="cardGrid"></div>
+    <p class="empty" id="emptyState" hidden>没有找到匹配的车型，换个关键词试试～</p>
+  </section>
+
+  <!-- 关于 -->
+  <section class="about container" id="about">
+    <h2>关于本站</h2>
+    <p class="muted">
+      「汽车大百科」是一个面向大众的汽车科普图鉴，收录了来自德国、意大利、美国、日本、英国、法国、瑞典、中国等地的经典与前沿车型。
+      每款车都包含动力参数、驱动形式与有趣的冷知识，帮助你在几分钟内读懂一辆车。数据为科普性近似值，仅供学习参考。
+    </p>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>🚘 汽车大百科 · Global Car Encyclopedia</p>
+      <p class="muted small">数据为科普性近似值，仅供学习交流，非商业用途。</p>
+    </div>
+  </footer>
+
+  <!-- 详情弹窗 -->
+  <div class="modal" id="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <button class="modal-close" data-close aria-label="关闭">✕</button>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+# OS / 编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+
+# 编辑器配置
+.vscode/
+.idea/
+
+# 临时文件
+*.tmp
