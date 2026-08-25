@@ -23,6 +23,7 @@
       <nav class="nav-links">
         <a href="#featured">精选</a>
         <a href="#explore">图鉴</a>
+        <a href="#quiz">游戏</a>
         <a href="#stats">数据</a>
         <a href="#about">关于</a>
       </nav>
@@ -108,6 +109,18 @@
     <p class="empty" id="emptyState" hidden>没有找到匹配的车型，换个关键词试试～</p>
   </section>
 
+  <!-- 小小汽车问答 -->
+  <section class="quiz-cta container" id="quiz">
+    <div class="quiz-card">
+      <div class="quiz-card-emoji">🎮</div>
+      <div class="quiz-card-text">
+        <h2>小小汽车问答</h2>
+        <p>看图猜车、比一比谁最快……来挑战 10 道题，看看你能得几颗星星！⭐</p>
+      </div>
+      <button class="quiz-start-btn" id="quizStartBtn">🚦 开始游戏</button>
+    </div>
+  </section>
+
   <!-- 关于 -->
   <section class="about container" id="about">
     <h2>关于本站</h2>
@@ -153,6 +166,15 @@
     <div class="modal-card compare-card" role="dialog" aria-modal="true">
       <button class="modal-close" data-close-cmp aria-label="关闭">✕</button>
       <div class="compare-body" id="compareBody"></div>
+    </div>
+  </div>
+
+  <!-- 小小汽车问答弹窗 -->
+  <div class="modal" id="quizModal" hidden>
+    <div class="modal-backdrop" data-close-quiz></div>
+    <div class="modal-card quiz-modal-card" role="dialog" aria-modal="true">
+      <button class="modal-close" data-close-quiz aria-label="关闭">✕</button>
+      <div class="quiz-body" id="quizBody"></div>
     </div>
   </div>
 

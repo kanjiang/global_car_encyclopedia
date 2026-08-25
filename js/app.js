@@ -79,6 +79,9 @@
     compareBody: document.getElementById("compareBody"),
     langToggle: document.getElementById("langToggle"),
     autoReadBtn: document.getElementById("autoReadBtn"),
+    quizStartBtn: document.getElementById("quizStartBtn"),
+    quizModal: document.getElementById("quizModal"),
+    quizBody: document.getElementById("quizBody"),
   };
 
   // 本周精选（按此顺序展示的车型 id；缺失则自动跳过）
@@ -105,6 +108,7 @@
     render();
     initTheme();
     initScrollFx();
+    bindQuiz();
     if (TTS) {
       window.speechSynthesis.getVoices();
       window.speechSynthesis.onvoiceschanged = () => {};
@@ -403,6 +407,7 @@
       if (e.key === "Escape") {
         closeModal();
         closeCompare();
+        closeQuiz();
       }
     });
 
@@ -922,6 +927,197 @@
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
+  }
+
+  // ---------- 小小汽车问答小游戏 ----------
+  const QUIZ_TOTAL = 10;
+  const quiz = { questions: [], index: 0, score: 0, answered: false };
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  const sample = (arr, k) => shuffle(arr).slice(0, k);
+  const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  // 面向浏览器直接朗读一段中文（用于读题/鼓励语）
+  function readText(text) {
+    if (!TTS) return;
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(String(text).replace(/[^\u4e00-\u9fa5A-Za-z0-9，。？！、,.?! ]/g, ""));
+    u.lang = "zh-CN";
+    u.rate = 0.95;
+    u.pitch = 1.12;
+    const v = pickVoice("zh");
+    if (v) u.voice = v;
+    synth.speak(u);
+  }
+
+  function nameOptions(correct) {
+    const others = sample(cars.filter((c) => c.id !== correct.id), 3);
+    return shuffle([correct, ...others]).map((c) => ({ label: `${c.emoji} ${c.name}`, correct: c.id === correct.id }));
+  }
+  function valueQuestion(prompt, valFn, mode) {
+    const four = sample(cars, 4);
+    const vals = four.map(valFn);
+    const best = mode === "min" ? Math.min(...vals) : Math.max(...vals);
+    const options = shuffle(four).map((c) => ({ label: `${c.emoji} ${c.name}`, correct: valFn(c) === best }));
+    return { prompt, options };
+  }
+  function pickFromSet(list, correctVal) {
+    const distract = sample(list.filter((v) => v !== correctVal), 3);
+    return shuffle([correctVal, ...distract]).map((v) => ({ label: v, correct: v === correctVal }));
+  }
+
+  const QUIZ_BUILDERS = [
+    () => {
+      const c = rand(cars);
+      return { prompt: "🔍 猜猜这是哪辆车？", image: c.image, options: nameOptions(c) };
+    },
+    () => {
+      const c = rand(cars);
+      return { prompt: `🌍 ${c.name} 来自哪个国家？`, image: c.image, options: pickFromSet(uniq(cars.map((x) => x.country)), c.country) };
+    },
+    () => {
+      const c = rand(cars);
+      return { prompt: `🏷️ ${c.name} 属于哪种车？`, image: c.image, options: pickFromSet(uniq(cars.map((x) => x.category)), c.category) };
+    },
+    () => valueQuestion("🏁 下面哪辆车跑得最快？", (c) => c.topSpeed, "max"),
+    () => valueQuestion("💪 谁的马力最大？", (c) => parseInt(c.power, 10) || 0, "max"),
+    () => valueQuestion("⚡ 谁的加速最快（0-100 最快）？", (c) => c.accel, "min"),
+  ];
+
+  function genQuestions(n) {
+    const qs = [];
+    for (let i = 0; i < n; i++) qs.push(rand(QUIZ_BUILDERS)());
+    return qs;
+  }
+
+  function openQuiz() {
+    stopSpeaking();
+    stopAutoRead();
+    quiz.questions = genQuestions(QUIZ_TOTAL);
+    quiz.index = 0;
+    quiz.score = 0;
+    el.quizModal.hidden = false;
+    document.body.style.overflow = "hidden";
+    renderQuestion();
+  }
+
+  function closeQuiz() {
+    if (!el.quizModal) return;
+    el.quizModal.hidden = true;
+    document.body.style.overflow = "";
+    if (TTS) window.speechSynthesis.cancel();
+  }
+
+  function renderQuestion() {
+    const q = quiz.questions[quiz.index];
+    quiz.answered = false;
+    const progress = (quiz.index / QUIZ_TOTAL) * 100;
+    el.quizBody.innerHTML = `
+      <div class="quiz-top">
+        <div class="quiz-progress"><span style="width:${progress}%"></span></div>
+        <div class="quiz-meta"><span>第 ${quiz.index + 1} / ${QUIZ_TOTAL} 题</span><span id="quizScore">⭐ ${quiz.score}</span></div>
+      </div>
+      ${q.image ? `<div class="quiz-image"><img src="${q.image}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ""}
+      <div class="quiz-prompt-row">
+        <h3 class="quiz-prompt">${q.prompt}</h3>
+        ${TTS ? `<button class="quiz-read" data-read aria-label="读题">🔊 读题</button>` : ""}
+      </div>
+      <div class="quiz-options">
+        ${q.options.map((o, i) => `<button class="quiz-option" data-opt="${i}">${o.label}</button>`).join("")}
+      </div>
+      <div class="quiz-feedback" id="quizFeedback"></div>`;
+  }
+
+  function answerQuiz(optIndex) {
+    if (quiz.answered) return;
+    quiz.answered = true;
+    const q = quiz.questions[quiz.index];
+    const chosen = q.options[optIndex];
+    const btns = el.quizBody.querySelectorAll(".quiz-option");
+    btns.forEach((b, i) => {
+      b.disabled = true;
+      if (q.options[i].correct) b.classList.add("correct");
+      if (i === optIndex && !chosen.correct) b.classList.add("wrong");
+    });
+    const fb = el.quizBody.querySelector("#quizFeedback");
+    const last = quiz.index + 1 >= QUIZ_TOTAL;
+    if (chosen.correct) {
+      quiz.score += 1;
+      const scoreEl = el.quizBody.querySelector("#quizScore");
+      if (scoreEl) scoreEl.textContent = `⭐ ${quiz.score}`;
+      fb.innerHTML = `<span class="fb-ok">🎉 答对啦！</span>`;
+      readText(rand(["答对啦，真棒", "太厉害了", "答对了，你真聪明"]));
+    } else {
+      const ans = q.options.find((o) => o.correct);
+      fb.innerHTML = `<span class="fb-no">😊 没关系，正确答案是：${ans ? ans.label : ""}</span>`;
+      readText("没关系，再试试看");
+    }
+    fb.innerHTML += `<button class="quiz-next" data-next>${last ? "🏆 看结果" : "下一题 →"}</button>`;
+  }
+
+  function nextQuiz() {
+    quiz.index += 1;
+    if (quiz.index >= QUIZ_TOTAL) renderResult();
+    else renderQuestion();
+  }
+
+  function renderResult() {
+    const s = quiz.score;
+    const t = QUIZ_TOTAL;
+    const pct = s / t;
+    const stars = pct >= 0.9 ? 3 : pct >= 0.6 ? 2 : pct >= 0.3 ? 1 : 0;
+    const starStr = "⭐".repeat(stars) + "☆".repeat(3 - stars);
+    let msg;
+    if (pct >= 0.9) msg = "太厉害啦，你是汽车小达人！🏆";
+    else if (pct >= 0.6) msg = "很棒哦，继续加油！👍";
+    else if (pct >= 0.3) msg = "不错的开始，再玩一次会更好！💪";
+    else msg = "没关系，多玩几次就记住啦！🚗";
+    el.quizBody.innerHTML = `
+      <div class="quiz-result">
+        <div class="quiz-result-stars">${starStr}</div>
+        <h3>你答对了 ${s} / ${t} 题</h3>
+        <p class="quiz-result-msg">${msg}</p>
+        <div class="quiz-result-actions">
+          <button class="quiz-next" data-replay>🔁 再玩一次</button>
+          <button class="quiz-close-btn" data-close-quiz>关闭</button>
+        </div>
+      </div>`;
+    readText(`你答对了${s}题。${msg}`);
+  }
+
+  function bindQuiz() {
+    if (el.quizStartBtn) el.quizStartBtn.addEventListener("click", openQuiz);
+    if (!el.quizModal) return;
+    el.quizModal.addEventListener("click", (e) => {
+      if (e.target.hasAttribute("data-close-quiz")) {
+        closeQuiz();
+        return;
+      }
+      const opt = e.target.closest("[data-opt]");
+      if (opt) {
+        answerQuiz(parseInt(opt.dataset.opt, 10));
+        return;
+      }
+      if (e.target.closest("[data-next]")) {
+        nextQuiz();
+        return;
+      }
+      if (e.target.closest("[data-replay]")) {
+        openQuiz();
+        return;
+      }
+      if (e.target.closest("[data-read]")) {
+        readText(quiz.questions[quiz.index].prompt);
+      }
+    });
   }
 
   // ---------- 主题 ----------
