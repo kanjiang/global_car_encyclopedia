@@ -931,7 +931,37 @@
 
   // ---------- 小小汽车问答小游戏 ----------
   const QUIZ_TOTAL = 10;
-  const quiz = { questions: [], index: 0, score: 0, answered: false };
+  const quiz = { questions: [], index: 0, score: 0, answered: false, mode: "mix" };
+
+  // 用 Web Audio 合成答对/答错音效（无需外部文件，离线可用）
+  let audioCtx = null;
+  function playSound(kind) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    try {
+      audioCtx = audioCtx || new AC();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      const notes = kind === "ok" ? [660, 880, 1320] : [320, 200];
+      let t = audioCtx.currentTime;
+      notes.forEach((f) => {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = kind === "ok" ? "triangle" : "sawtooth";
+        o.frequency.value = f;
+        o.connect(g);
+        g.connect(audioCtx.destination);
+        const dur = kind === "ok" ? 0.12 : 0.18;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.start(t);
+        o.stop(t + dur);
+        t += dur * 0.9;
+      });
+    } catch (e) {
+      /* 忽略音频错误 */
+    }
+  }
 
   function shuffle(arr) {
     const a = arr.slice();
@@ -962,8 +992,9 @@
     const others = sample(cars.filter((c) => c.id !== correct.id), 3);
     return shuffle([correct, ...others]).map((c) => ({ label: `${c.emoji} ${c.name}`, correct: c.id === correct.id }));
   }
-  function valueQuestion(prompt, valFn, mode) {
-    const four = sample(cars, 4);
+  function valueQuestion(prompt, valFn, mode, pool) {
+    const src = pool && pool.length >= 4 ? pool : cars;
+    const four = sample(src, 4);
     const vals = four.map(valFn);
     const best = mode === "min" ? Math.min(...vals) : Math.max(...vals);
     const options = shuffle(four).map((c) => ({ label: `${c.emoji} ${c.name}`, correct: valFn(c) === best }));
@@ -974,38 +1005,70 @@
     return shuffle([correctVal, ...distract]).map((v) => ({ label: v, correct: v === correctVal }));
   }
 
-  const QUIZ_BUILDERS = [
-    () => {
-      const c = rand(cars);
+  const QUIZ_BUILDERS = {
+    name: (pool) => {
+      const c = rand(pool);
       return { prompt: "🔍 猜猜这是哪辆车？", image: c.image, options: nameOptions(c) };
     },
-    () => {
-      const c = rand(cars);
+    country: (pool) => {
+      const c = rand(pool);
       return { prompt: `🌍 ${c.name} 来自哪个国家？`, image: c.image, options: pickFromSet(uniq(cars.map((x) => x.country)), c.country) };
     },
-    () => {
-      const c = rand(cars);
+    category: (pool) => {
+      const c = rand(pool);
       return { prompt: `🏷️ ${c.name} 属于哪种车？`, image: c.image, options: pickFromSet(uniq(cars.map((x) => x.category)), c.category) };
     },
-    () => valueQuestion("🏁 下面哪辆车跑得最快？", (c) => c.topSpeed, "max"),
-    () => valueQuestion("💪 谁的马力最大？", (c) => parseInt(c.power, 10) || 0, "max"),
-    () => valueQuestion("⚡ 谁的加速最快（0-100 最快）？", (c) => c.accel, "min"),
-  ];
+    fastest: (pool) => valueQuestion("🏁 下面哪辆车跑得最快？", (c) => c.topSpeed, "max", pool),
+    power: (pool) => valueQuestion("💪 谁的马力最大？", (c) => parseInt(c.power, 10) || 0, "max", pool),
+    quick: (pool) => valueQuestion("⚡ 谁的加速最快（0-100 最快）？", (c) => c.accel, "min", pool),
+  };
 
-  function genQuestions(n) {
+  const ALL_KEYS = Object.keys(QUIZ_BUILDERS);
+  const superPool = cars.filter((c) => /跑车|超跑|超级/.test(c.category));
+  const QUIZ_MODES = {
+    mix: { label: "🎲 混合挑战", desc: "各种题型都有", keys: ALL_KEYS, pool: () => cars },
+    name: { label: "🔍 看图猜车", desc: "看图片猜车名", keys: ["name"], pool: () => cars },
+    country: { label: "🌍 认识国家", desc: "猜车来自哪国", keys: ["country"], pool: () => cars },
+    category: { label: "🏷️ 认识车型", desc: "猜它是哪种车", keys: ["category"], pool: () => cars },
+    battle: { label: "🏆 巅峰对决", desc: "比谁更快更强", keys: ["fastest", "power", "quick"], pool: () => cars },
+    super: { label: "🏎️ 超跑专场", desc: "只考超级跑车", keys: ALL_KEYS, pool: () => (superPool.length >= 4 ? superPool : cars) },
+  };
+
+  function genQuestions(n, modeKey) {
+    const mode = QUIZ_MODES[modeKey] || QUIZ_MODES.mix;
+    const pool = mode.pool();
     const qs = [];
-    for (let i = 0; i < n; i++) qs.push(rand(QUIZ_BUILDERS)());
+    for (let i = 0; i < n; i++) qs.push(QUIZ_BUILDERS[rand(mode.keys)](pool));
     return qs;
   }
 
   function openQuiz() {
     stopSpeaking();
     stopAutoRead();
-    quiz.questions = genQuestions(QUIZ_TOTAL);
-    quiz.index = 0;
-    quiz.score = 0;
     el.quizModal.hidden = false;
     document.body.style.overflow = "hidden";
+    renderStart();
+  }
+
+  function renderStart() {
+    el.quizBody.innerHTML = `
+      <div class="quiz-start">
+        <div class="quiz-start-emoji">🎮</div>
+        <h3 class="quiz-start-title">选择一个挑战</h3>
+        <div class="quiz-modes">
+          ${Object.entries(QUIZ_MODES)
+            .map(([k, m]) => `<button class="quiz-mode" data-mode="${k}"><span class="qm-label">${m.label}</span><span class="qm-desc">${m.desc}</span></button>`)
+            .join("")}
+        </div>
+      </div>`;
+  }
+
+  function startGame(modeKey) {
+    stopSpeaking();
+    quiz.mode = modeKey;
+    quiz.questions = genQuestions(QUIZ_TOTAL, modeKey);
+    quiz.index = 0;
+    quiz.score = 0;
     renderQuestion();
   }
 
@@ -1054,10 +1117,12 @@
       const scoreEl = el.quizBody.querySelector("#quizScore");
       if (scoreEl) scoreEl.textContent = `⭐ ${quiz.score}`;
       fb.innerHTML = `<span class="fb-ok">🎉 答对啦！</span>`;
+      playSound("ok");
       readText(rand(["答对啦，真棒", "太厉害了", "答对了，你真聪明"]));
     } else {
       const ans = q.options.find((o) => o.correct);
       fb.innerHTML = `<span class="fb-no">😊 没关系，正确答案是：${ans ? ans.label : ""}</span>`;
+      playSound("no");
       readText("没关系，再试试看");
     }
     fb.innerHTML += `<button class="quiz-next" data-next>${last ? "🏆 看结果" : "下一题 →"}</button>`;
@@ -1087,6 +1152,7 @@
         <p class="quiz-result-msg">${msg}</p>
         <div class="quiz-result-actions">
           <button class="quiz-next" data-replay>🔁 再玩一次</button>
+          <button class="quiz-close-btn" data-restart>🎮 换个挑战</button>
           <button class="quiz-close-btn" data-close-quiz>关闭</button>
         </div>
       </div>`;
@@ -1101,6 +1167,11 @@
         closeQuiz();
         return;
       }
+      const modeBtn = e.target.closest("[data-mode]");
+      if (modeBtn) {
+        startGame(modeBtn.dataset.mode);
+        return;
+      }
       const opt = e.target.closest("[data-opt]");
       if (opt) {
         answerQuiz(parseInt(opt.dataset.opt, 10));
@@ -1111,7 +1182,11 @@
         return;
       }
       if (e.target.closest("[data-replay]")) {
-        openQuiz();
+        startGame(quiz.mode);
+        return;
+      }
+      if (e.target.closest("[data-restart]")) {
+        renderStart();
         return;
       }
       if (e.target.closest("[data-read]")) {
