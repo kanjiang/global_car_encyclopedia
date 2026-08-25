@@ -384,6 +384,63 @@ select:hover { border-color: var(--border-strong); }
 .facts li { margin-bottom: 9px; color: var(--muted); }
 .facts li::marker { color: var(--accent); }
 
+/* ---------- 车型对比 ---------- */
+.compare-btn {
+  position: absolute; z-index: 4; bottom: 12px; right: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(10, 14, 26, 0.55); color: #fff;
+  padding: 6px 12px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; cursor: pointer;
+  backdrop-filter: blur(6px); transition: all 0.2s; white-space: nowrap;
+}
+.compare-btn:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.35); }
+.compare-btn.active { background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-color: transparent; }
+
+.compare-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+  transform: translateY(130%); transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-top: 1px solid var(--border-strong); box-shadow: 0 -14px 44px rgba(0, 0, 0, 0.45);
+}
+.compare-bar.show { transform: translateY(0); }
+.compare-bar.flash { animation: cmpFlash 0.4s; }
+@keyframes cmpFlash { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-7px); } }
+.compare-bar-inner { display: flex; align-items: center; gap: 16px; padding: 14px 0; }
+.cmp-left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.cmp-title { font-weight: 800; white-space: nowrap; }
+.cmp-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.cmp-chip {
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+  background: var(--card); border: 1px solid var(--border); border-radius: 999px;
+  padding: 6px 8px 6px 13px; font-size: 0.85rem; backdrop-filter: blur(6px);
+}
+.cmp-chip button { border: none; background: rgba(244, 63, 94, 0.22); color: #fff; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; font-size: 0.68rem; line-height: 1; }
+.cmp-chip button:hover { background: var(--accent-3); }
+.cmp-actions { display: flex; gap: 10px; }
+.cmp-clear { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 10px 16px; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
+.cmp-clear:hover { color: var(--text); border-color: var(--border-strong); }
+.cmp-go {
+  border: none; color: #fff; padding: 10px 20px; border-radius: 12px; font-weight: 800; cursor: pointer;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); box-shadow: 0 8px 24px rgba(56, 189, 248, 0.35);
+  white-space: nowrap; transition: transform 0.2s, filter 0.2s;
+}
+.cmp-go:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); }
+.cmp-go:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+.compare-card { width: min(980px, 100%); max-height: 90vh; }
+.compare-body { max-height: 90vh; overflow: auto; }
+.cmp-modal-title { padding: 24px 26px 4px; margin: 0; font-size: 1.45rem; font-weight: 900; }
+.cmp-table { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); margin: 16px 26px 26px; border-radius: 14px; overflow: hidden; }
+.cmp-cell { background: var(--card-solid); padding: 12px 14px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }
+.cmp-key, .cmp-corner { font-weight: 700; color: var(--muted); background: var(--card); }
+.cmp-head { flex-direction: column; align-items: flex-start; gap: 4px; padding: 0; overflow: hidden; position: relative; min-height: 128px; justify-content: flex-end; }
+.cmp-head img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.cmp-head::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.88), transparent 65%); z-index: 1; }
+.cmp-emoji { position: relative; z-index: 2; font-size: 2.6rem; margin: auto; }
+.cmp-head-name { position: relative; z-index: 2; color: #fff; font-weight: 800; font-size: 0.95rem; padding: 0 12px; text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+.cmp-head-brand { position: relative; z-index: 2; color: #fff; font-size: 0.72rem; opacity: 0.85; padding: 0 12px 12px; text-shadow: 0 2px 8px rgba(0,0,0,0.7); }
+.cmp-cell.best { color: var(--accent); font-weight: 800; background: color-mix(in srgb, var(--accent) 13%, var(--card-solid)); }
+.crown { color: #f7b500; }
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 860px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -398,6 +455,9 @@ select:hover { border-color: var(--border-strong); }
   .card-grid { grid-template-columns: 1fr; }
   .modal-hero { height: 220px; }
   .modal-hero-title h3 { font-size: 1.5rem; }
+  .compare-bar-inner { flex-wrap: wrap; gap: 10px; }
+  .cmp-actions { width: 100%; }
+  .cmp-actions .cmp-go { flex: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

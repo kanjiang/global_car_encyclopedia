@@ -9,7 +9,9 @@
     category: "全部",
     country: "全部",
     sort: "default",
+    compare: [],
   };
+  const COMPARE_MAX = 4;
 
   // DOM
   const el = {
@@ -35,6 +37,13 @@
     carPrev: document.getElementById("carPrev"),
     carNext: document.getElementById("carNext"),
     carProgress: document.getElementById("carProgress"),
+    compareBar: document.getElementById("compareBar"),
+    compareChips: document.getElementById("compareChips"),
+    compareCount: document.getElementById("compareCount"),
+    compareClear: document.getElementById("compareClear"),
+    compareGo: document.getElementById("compareGo"),
+    compareModal: document.getElementById("compareModal"),
+    compareBody: document.getElementById("compareBody"),
   };
 
   // 本周精选（按此顺序展示的车型 id；缺失则自动跳过）
@@ -317,6 +326,12 @@
     });
 
     el.cardGrid.addEventListener("click", (e) => {
+      const cmp = e.target.closest("[data-compare]");
+      if (cmp) {
+        e.stopPropagation();
+        toggleCompare(cmp.dataset.compare);
+        return;
+      }
       const card = e.target.closest("[data-id]");
       if (!card) return;
       openModal(card.dataset.id);
@@ -326,7 +341,22 @@
       if (e.target.hasAttribute("data-close")) closeModal();
     });
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeModal();
+      if (e.key === "Escape") {
+        closeModal();
+        closeCompare();
+      }
+    });
+
+    // 对比栏 & 对比弹窗
+    el.compareChips.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-remove]");
+      if (!btn) return;
+      toggleCompare(btn.dataset.remove);
+    });
+    el.compareClear.addEventListener("click", clearCompare);
+    el.compareGo.addEventListener("click", openCompare);
+    el.compareModal.addEventListener("click", (e) => {
+      if (e.target.hasAttribute("data-close-cmp")) closeCompare();
     });
 
     el.themeToggle.addEventListener("click", toggleTheme);
@@ -421,6 +451,9 @@
             ? `<img class="car-photo" src="${c.image}" alt="${c.name}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`
             : ""
         }
+        <button class="compare-btn ${state.compare.includes(c.id) ? "active" : ""}" data-compare="${c.id}">
+          ${state.compare.includes(c.id) ? "✓ 已选" : "＋ 对比"}
+        </button>
       </div>
       <div class="car-info">
         <span class="car-brand">${c.brand}</span>
@@ -488,6 +521,121 @@
   function closeModal() {
     el.modal.hidden = true;
     document.body.style.overflow = "";
+  }
+
+  // ---------- 车型对比 ----------
+  function toggleCompare(id) {
+    const idx = state.compare.indexOf(id);
+    if (idx >= 0) {
+      state.compare.splice(idx, 1);
+    } else {
+      if (state.compare.length >= COMPARE_MAX) {
+        flashCompareBar();
+        return;
+      }
+      state.compare.push(id);
+    }
+    updateCompareButtons();
+    renderCompareBar();
+  }
+
+  function clearCompare() {
+    state.compare = [];
+    updateCompareButtons();
+    renderCompareBar();
+  }
+
+  function updateCompareButtons() {
+    el.cardGrid.querySelectorAll("[data-compare]").forEach((btn) => {
+      const on = state.compare.includes(btn.dataset.compare);
+      btn.classList.toggle("active", on);
+      btn.textContent = on ? "✓ 已选" : "＋ 对比";
+    });
+  }
+
+  function renderCompareBar() {
+    if (state.compare.length === 0) {
+      el.compareBar.classList.remove("show");
+      return;
+    }
+    el.compareBar.classList.add("show");
+    el.compareChips.innerHTML = state.compare
+      .map((id) => {
+        const c = cars.find((x) => x.id === id);
+        return `<span class="cmp-chip">${c.emoji} ${c.name}<button data-remove="${id}" aria-label="移除">✕</button></span>`;
+      })
+      .join("");
+    el.compareCount.textContent = state.compare.length;
+    el.compareGo.disabled = state.compare.length < 2;
+  }
+
+  function flashCompareBar() {
+    el.compareBar.classList.remove("flash");
+    void el.compareBar.offsetWidth;
+    el.compareBar.classList.add("flash");
+  }
+
+  const CMP_ROWS = [
+    { k: "车型图片", type: "img" },
+    { k: "品牌", get: (c) => c.brand },
+    { k: "类型", get: (c) => c.category },
+    { k: "产地", get: (c) => c.country },
+    { k: "年代", get: (c) => c.year },
+    { k: "最高车速", get: (c) => c.topSpeed + " km/h", val: (c) => c.topSpeed, best: "max" },
+    { k: "0-100 加速", get: (c) => c.accel + " s", val: (c) => c.accel, best: "min" },
+    { k: "最大功率", get: (c) => c.power, val: (c) => parseInt(c.power, 10) || 0, best: "max" },
+    { k: "动力形式", get: (c) => c.engine },
+    { k: "驱动", get: (c) => c.drivetrain },
+    { k: "座位", get: (c) => c.seats + " 座" },
+    { k: "参考价格", get: (c) => c.priceRMB },
+  ];
+
+  function openCompare() {
+    if (state.compare.length < 2) return;
+    const list = state.compare.map((id) => cars.find((c) => c.id === id)).filter(Boolean);
+
+    const header =
+      `<div class="cmp-cell cmp-corner">参数</div>` +
+      list
+        .map(
+          (c) => `
+        <div class="cmp-cell cmp-head" style="background:${c.accent}">
+          ${c.image ? `<img src="${c.image}" alt="${c.name}" referrerpolicy="no-referrer" onerror="this.remove()">` : `<span class="cmp-emoji">${c.emoji}</span>`}
+          <span class="cmp-head-name">${c.name}</span>
+          <span class="cmp-head-brand">${c.brand}</span>
+        </div>`
+        )
+        .join("");
+
+    const rowsHtml = CMP_ROWS.map((row) => {
+      if (row.type === "img") return "";
+      let bestVal = null;
+      if (row.best) {
+        const vals = list.map(row.val);
+        bestVal = row.best === "max" ? Math.max(...vals) : Math.min(...vals);
+      }
+      const cells = list
+        .map((c) => {
+          const isBest = row.best && row.val(c) === bestVal && list.length > 1;
+          return `<div class="cmp-cell ${isBest ? "best" : ""}">${row.get(c)}${isBest ? " <span class='crown'>★</span>" : ""}</div>`;
+        })
+        .join("");
+      return `<div class="cmp-cell cmp-key">${row.k}</div>${cells}`;
+    }).join("");
+
+    el.compareBody.innerHTML = `
+      <h3 class="cmp-modal-title">车型参数对比 <span class="muted small">（★ 为该项最优）</span></h3>
+      <div class="cmp-table" style="grid-template-columns: 120px repeat(${list.length}, minmax(140px, 1fr));">
+        ${header}
+        ${rowsHtml}
+      </div>`;
+    el.compareModal.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeCompare() {
+    if (el.compareModal) el.compareModal.hidden = true;
+    if (el.modal && el.modal.hidden) document.body.style.overflow = "";
   }
 
   // ---------- 滚动渐入 ----------

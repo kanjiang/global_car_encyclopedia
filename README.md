@@ -1,14 +1,26 @@
 # 🚘 汽车大百科 · Global Car Encyclopedia
 
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)
+![No Build](https://img.shields.io/badge/build-zero%20dependency-brightgreen)
+![Offline Ready](https://img.shields.io/badge/offline-ready-success)
+
 一个面向大众的**全球汽车科普图鉴**网页。收录来自德国、意大利、美国、日本、英国、法国、瑞典、中国等地的经典与前沿车型，涵盖超级跑车、豪华轿车、SUV、电动车、越野车、经典老爷车等类型。每款车都提供动力参数、驱动形式与有趣的冷知识。
+
+> 🔗 **在线预览**：<https://kanjiang.github.io/global_car_encyclopedia/>
+> （若暂时打不开，说明仓库 Settings → Pages 尚未启用，见下方「部署到 GitHub Pages」）
 
 ## ✨ 功能特性
 
+- **本周精选轮播**：全宽大图轮播，**视差固定背景**（滚动时图片不动）、淡入淡出、自动播放进度条、左右滑动手势、键盘方向键、悬停暂停
 - **汽车图鉴**：卡片式浏览，每张卡片展示极速 / 加速 / 马力等关键参数
+- **车型对比**：卡片一键「＋对比」，底部对比栏最多选 4 款，弹出并排参数表并**高亮各项最优值（★）**
 - **智能搜索**：按车型、品牌、国家、类型关键词模糊搜索
 - **多维筛选**：按类型（标签）、国家（下拉）快速过滤
 - **多种排序**：最高车速、加速最快、马力、年代
 - **详情弹窗**：完整参数表 + 科普正文 + 冷知识
+- **酷炫 UI**：动态极光背景、玻璃拟态、霓虹辉光、卡片 3D 倾斜、滚动渐入、数字滚动、滚动进度条
 - **暗色 / 亮色主题**：一键切换，自动记忆偏好
 - **响应式设计**：手机、平板、桌面自适应
 
@@ -48,6 +60,17 @@
 python -m http.server 8000
 # 然后浏览器访问 http://localhost:8000
 ```
+
+## 🌐 部署到 GitHub Pages（在线访问）
+
+本项目是纯静态站点，可直接用 GitHub Pages 免费托管：
+
+1. 打开仓库 **Settings → Pages**
+2. **Source** 选择 `Deploy from a branch`
+3. **Branch** 选择 `main`，目录选择 `/ (root)`，点击 **Save**
+4. 等待 1–2 分钟，访问：<https://kanjiang.github.io/global_car_encyclopedia/>
+
+> 站点为纯前端，无需任何服务器或数据库；图片已本地化，Pages 上线后全球均可正常显示。
 
 ## ➕ 如何添加新车型
 
