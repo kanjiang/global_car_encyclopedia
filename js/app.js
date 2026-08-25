@@ -2,6 +2,7 @@
   "use strict";
 
   const cars = window.CARS || [];
+  const TTS = typeof window !== "undefined" && "speechSynthesis" in window;
 
   // 状态
   const state = {
@@ -70,6 +71,11 @@
     render();
     initTheme();
     initScrollFx();
+    if (TTS) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {};
+      window.addEventListener("beforeunload", stopSpeaking);
+    }
   }
 
   function renderStats() {
@@ -326,6 +332,13 @@
     });
 
     el.cardGrid.addEventListener("click", (e) => {
+      const sp = e.target.closest("[data-speak-card]");
+      if (sp) {
+        e.stopPropagation();
+        const c = cars.find((x) => x.id === sp.dataset.speakCard);
+        if (c) speak(`${c.name}。${c.summary}`, sp);
+        return;
+      }
       const cmp = e.target.closest("[data-compare]");
       if (cmp) {
         e.stopPropagation();
@@ -338,7 +351,15 @@
     });
 
     el.modal.addEventListener("click", (e) => {
-      if (e.target.hasAttribute("data-close")) closeModal();
+      if (e.target.hasAttribute("data-close")) {
+        closeModal();
+        return;
+      }
+      const sp = e.target.closest("[data-speak]");
+      if (sp) {
+        const c = cars.find((x) => x.id === sp.dataset.speak);
+        if (c) speak(buildNarration(c), sp);
+      }
     });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
@@ -454,6 +475,7 @@
         <button class="compare-btn ${state.compare.includes(c.id) ? "active" : ""}" data-compare="${c.id}">
           ${state.compare.includes(c.id) ? "✓ 已选" : "＋ 对比"}
         </button>
+        ${TTS ? `<button class="card-speak" data-speak-card="${c.id}" aria-label="朗读 ${c.name}" title="朗读">🔊</button>` : ""}
       </div>
       <div class="car-info">
         <span class="car-brand">${c.brand}</span>
@@ -472,6 +494,7 @@
   function openModal(id) {
     const c = cars.find((x) => x.id === id);
     if (!c) return;
+    stopSpeaking();
 
     const specs = [
       ["最高车速", c.topSpeed + " km/h"],
@@ -498,6 +521,7 @@
       </div>
       <div class="modal-content">
         <div class="tags"><span>🌍 ${c.country}</span><span>🏷️ ${c.category}</span><span>📅 ${c.year}</span></div>
+        ${TTS ? `<button class="speak-btn" data-speak="${c.id}">🔊 朗读讲解</button>` : ""}
         <p class="summary-line">${c.summary}</p>
         <p class="desc">${c.description}</p>
         <div class="spec-grid">
@@ -521,6 +545,64 @@
   function closeModal() {
     el.modal.hidden = true;
     document.body.style.overflow = "";
+    stopSpeaking();
+  }
+
+  // ---------- 朗读讲解（语音合成，面向小朋友） ----------
+  let currentSpeakBtn = null;
+
+  function pickZhVoice() {
+    if (!TTS) return null;
+    const vs = window.speechSynthesis.getVoices() || [];
+    return vs.find((v) => /^zh[-_]?/i.test(v.lang)) || null;
+  }
+
+  function resetSpeakBtn() {
+    if (!currentSpeakBtn) return;
+    currentSpeakBtn.classList.remove("speaking");
+    if (currentSpeakBtn.hasAttribute("data-speak")) currentSpeakBtn.innerHTML = "🔊 朗读讲解";
+    currentSpeakBtn = null;
+  }
+
+  function stopSpeaking() {
+    if (!TTS) return;
+    window.speechSynthesis.cancel();
+    resetSpeakBtn();
+  }
+
+  function speak(text, btn) {
+    if (!TTS) return;
+    const synth = window.speechSynthesis;
+    const same = currentSpeakBtn === btn;
+    synth.cancel();
+    resetSpeakBtn();
+    if (same) return; // 再次点击同一个按钮 = 停止
+
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "zh-CN";
+    u.rate = 0.92; // 稍慢，方便小朋友听懂
+    u.pitch = 1.12; // 稍微活泼一点
+    const v = pickZhVoice();
+    if (v) u.voice = v;
+    u.onend = u.onerror = () => {
+      if (currentSpeakBtn === btn) resetSpeakBtn();
+    };
+    currentSpeakBtn = btn;
+    btn.classList.add("speaking");
+    if (btn.hasAttribute("data-speak")) btn.innerHTML = "⏸ 停止朗读";
+    synth.speak(u);
+  }
+
+  // 把车型信息组织成小朋友能听懂的讲解词
+  function buildNarration(c) {
+    return (
+      `这是来自${c.country}的${c.brand}，${c.name}。${c.summary}。` +
+      `它属于${c.category}，在${c.year}年推出。` +
+      `它跑起来最快每小时可以到${c.topSpeed}公里，` +
+      `从停下来加速到每小时一百公里，只要${c.accel}秒哦。` +
+      `${c.description} ` +
+      `再告诉你几个有趣的小知识：${c.facts.join("；")}。`
+    );
   }
 
   // ---------- 车型对比 ----------
