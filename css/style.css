@@ -260,7 +260,9 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- 图鉴 ---------- */
 .explore { padding: 36px 0 70px; }
+.explore-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .explore-head h2 { font-size: 2rem; margin: 0 0 4px; font-weight: 900; letter-spacing: -0.5px; }
+.explore-head > div p { margin: 0; }
 .toolbar {
   display: flex; flex-wrap: wrap; gap: 16px 26px; align-items: center;
   margin: 26px 0 32px; padding: 20px; background: var(--bg-soft);
@@ -410,6 +412,41 @@ select:hover { border-color: var(--border-strong); }
   0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.5); }
   50% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); }
 }
+
+/* 双语切换按钮 */
+.lang-toggle {
+  background: var(--card); border: 1px solid var(--border); color: var(--text);
+  height: 42px; padding: 0 14px; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-weight: 700;
+  backdrop-filter: blur(8px); transition: all 0.25s; white-space: nowrap;
+}
+.lang-toggle:hover { border-color: var(--accent); box-shadow: var(--glow); transform: translateY(-2px); }
+
+/* 连读按钮 */
+.autoread-btn {
+  border: 1px solid var(--border-strong); background: var(--card); color: var(--text);
+  padding: 11px 20px; border-radius: 999px; font-weight: 700; cursor: pointer;
+  backdrop-filter: blur(8px); transition: all 0.2s; white-space: nowrap;
+}
+.autoread-btn:hover { border-color: var(--accent); box-shadow: var(--glow); transform: translateY(-2px); }
+.autoread-btn.reading {
+  color: #fff; border-color: transparent;
+  background: linear-gradient(90deg, var(--accent-3), var(--accent-2));
+  animation: speakPulse 1s ease-in-out infinite;
+}
+
+/* 连读时高亮当前卡片 */
+.car-card.reading { border-color: transparent; box-shadow: 0 0 0 2px var(--accent), 0 20px 50px rgba(56, 189, 248, 0.32); }
+.car-card.reading::after { opacity: 1; }
+
+/* 「你知道吗？」问答式冷知识卡片 */
+.fact-cards { display: grid; gap: 12px; }
+.fact-card {
+  display: flex; flex-direction: column; gap: 4px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 12%, var(--card)), var(--card));
+  border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 12px; padding: 14px 16px;
+}
+.fc-q { font-weight: 800; color: var(--accent); font-size: 0.85rem; }
+.fc-a { color: var(--text); opacity: 0.92; }
 
 /* ---------- 车型对比 ---------- */
 .compare-btn {

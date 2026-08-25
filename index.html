@@ -26,6 +26,7 @@
         <a href="#stats">数据</a>
         <a href="#about">关于</a>
       </nav>
+      <button class="lang-toggle" id="langToggle" title="切换朗读语言" aria-label="切换朗读语言">🌐 中</button>
       <button class="theme-toggle" id="themeToggle" title="切换主题" aria-label="切换主题">🌙</button>
     </div>
   </header>
@@ -71,8 +72,11 @@
   <!-- 图鉴主区 -->
   <section class="explore container" id="explore">
     <div class="explore-head">
-      <h2>汽车图鉴</h2>
-      <p class="muted">共 <strong id="totalCount">0</strong> 款车型 · 点击卡片查看详情</p>
+      <div>
+        <h2>汽车图鉴</h2>
+        <p class="muted">共 <strong id="totalCount">0</strong> 款车型 · 点击卡片查看详情</p>
+      </div>
+      <button class="autoread-btn" id="autoReadBtn">🎧 连读本页</button>
     </div>
 
     <div class="toolbar">

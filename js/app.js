@@ -11,8 +11,40 @@
     country: "全部",
     sort: "default",
     compare: [],
+    lang: "zh", // 朗读语言：zh | en
+    autoReading: false,
   };
   const COMPARE_MAX = 4;
+
+  // 中英对照词典（用于英文朗读）
+  const CATEGORY_EN = {
+    超级跑车: "hypercar",
+    跑车: "sports car",
+    豪华轿车: "luxury sedan",
+    SUV: "SUV",
+    电动车: "electric car",
+    越野: "off-road vehicle",
+    经典老爷车: "classic car",
+    家用轿车: "family car",
+  };
+  const COUNTRY_EN = {
+    法国: "France",
+    意大利: "Italy",
+    德国: "Germany",
+    日本: "Japan",
+    英国: "the United Kingdom",
+    美国: "the United States",
+    中国: "China",
+    瑞典: "Sweden",
+    韩国: "South Korea",
+  };
+  // 从「英文 中文」混合串里取拉丁字母/数字部分
+  function latinPart(str) {
+    const m = (str || "").match(/[A-Za-z0-9][A-Za-z0-9 .\-]*/g);
+    return m ? m.join(" ").trim() : "";
+  }
+  const brandEn = (c) => latinPart(c.brand) || c.brand;
+  const nameEn = (c) => latinPart(c.name) || c.name;
 
   // DOM
   const el = {
@@ -45,6 +77,8 @@
     compareGo: document.getElementById("compareGo"),
     compareModal: document.getElementById("compareModal"),
     compareBody: document.getElementById("compareBody"),
+    langToggle: document.getElementById("langToggle"),
+    autoReadBtn: document.getElementById("autoReadBtn"),
   };
 
   // 本周精选（按此顺序展示的车型 id；缺失则自动跳过）
@@ -75,6 +109,10 @@
       window.speechSynthesis.getVoices();
       window.speechSynthesis.onvoiceschanged = () => {};
       window.addEventListener("beforeunload", stopSpeaking);
+      initLang();
+    } else {
+      if (el.langToggle) el.langToggle.style.display = "none";
+      if (el.autoReadBtn) el.autoReadBtn.style.display = "none";
     }
   }
 
@@ -336,7 +374,7 @@
       if (sp) {
         e.stopPropagation();
         const c = cars.find((x) => x.id === sp.dataset.speakCard);
-        if (c) speak(`${c.name}。${c.summary}`, sp);
+        if (c) speak(cardText(c), sp);
         return;
       }
       const cmp = e.target.closest("[data-compare]");
@@ -381,6 +419,9 @@
     });
 
     el.themeToggle.addEventListener("click", toggleTheme);
+
+    if (el.langToggle) el.langToggle.addEventListener("click", toggleLang);
+    if (el.autoReadBtn) el.autoReadBtn.addEventListener("click", toggleAutoRead);
   }
 
   // 顶部搜索：智能匹配类型 / 国家 / 关键词
@@ -445,6 +486,7 @@
 
   // ---------- 渲染卡片 ----------
   function render() {
+    stopAutoRead();
     const list = getFiltered();
     el.totalCount.textContent = list.length;
 
@@ -533,8 +575,10 @@
             .join("")}
         </div>
         <div class="facts">
-          <h4>🧠 冷知识</h4>
-          <ul>${c.facts.map((f) => `<li>${f}</li>`).join("")}</ul>
+          <h4>💡 你知道吗？</h4>
+          <div class="fact-cards">
+            ${c.facts.map((f) => `<div class="fact-card"><span class="fc-q">你知道吗？</span><span class="fc-a">${f}</span></div>`).join("")}
+          </div>
         </div>
       </div>`;
 
@@ -548,19 +592,23 @@
     stopSpeaking();
   }
 
-  // ---------- 朗读讲解（语音合成，面向小朋友） ----------
+  // ---------- 朗读讲解（语音合成，双语，面向小朋友） ----------
   let currentSpeakBtn = null;
 
-  function pickZhVoice() {
+  function pickVoice(lang) {
     if (!TTS) return null;
     const vs = window.speechSynthesis.getVoices() || [];
-    return vs.find((v) => /^zh[-_]?/i.test(v.lang)) || null;
+    const re = lang === "en" ? /^en[-_]?/i : /^zh[-_]?/i;
+    return vs.find((v) => re.test(v.lang)) || null;
   }
+
+  const speakLabel = () => (state.lang === "en" ? "🔊 Read aloud" : "🔊 朗读讲解");
+  const stopLabel = () => (state.lang === "en" ? "⏸ Stop" : "⏸ 停止朗读");
 
   function resetSpeakBtn() {
     if (!currentSpeakBtn) return;
     currentSpeakBtn.classList.remove("speaking");
-    if (currentSpeakBtn.hasAttribute("data-speak")) currentSpeakBtn.innerHTML = "🔊 朗读讲解";
+    if (currentSpeakBtn.hasAttribute("data-speak")) currentSpeakBtn.innerHTML = speakLabel();
     currentSpeakBtn = null;
   }
 
@@ -570,31 +618,44 @@
     resetSpeakBtn();
   }
 
+  // 构造一条朗读语句（不管理按钮状态），返回 utterance
+  function makeUtterance(text) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = state.lang === "en" ? "en-US" : "zh-CN";
+    u.rate = 0.92; // 稍慢，方便小朋友听懂
+    u.pitch = 1.12; // 稍微活泼一点
+    const v = pickVoice(state.lang);
+    if (v) u.voice = v;
+    return u;
+  }
+
   function speak(text, btn) {
     if (!TTS) return;
+    stopAutoRead();
     const synth = window.speechSynthesis;
     const same = currentSpeakBtn === btn;
     synth.cancel();
     resetSpeakBtn();
     if (same) return; // 再次点击同一个按钮 = 停止
 
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "zh-CN";
-    u.rate = 0.92; // 稍慢，方便小朋友听懂
-    u.pitch = 1.12; // 稍微活泼一点
-    const v = pickZhVoice();
-    if (v) u.voice = v;
+    const u = makeUtterance(text);
     u.onend = u.onerror = () => {
       if (currentSpeakBtn === btn) resetSpeakBtn();
     };
     currentSpeakBtn = btn;
     btn.classList.add("speaking");
-    if (btn.hasAttribute("data-speak")) btn.innerHTML = "⏸ 停止朗读";
+    if (btn.hasAttribute("data-speak")) btn.innerHTML = stopLabel();
     synth.speak(u);
   }
 
-  // 把车型信息组织成小朋友能听懂的讲解词
+  // 详情讲解词（双语）
   function buildNarration(c) {
+    if (state.lang === "en") {
+      return (
+        `The ${brandEn(c)} ${nameEn(c)} is a ${CATEGORY_EN[c.category] || c.category} from ${COUNTRY_EN[c.country] || c.country}, introduced in ${c.year}. ` +
+        `It reaches a top speed of ${c.topSpeed} kilometers per hour, and accelerates from zero to one hundred in just ${c.accel} seconds.`
+      );
+    }
     return (
       `这是来自${c.country}的${c.brand}，${c.name}。${c.summary}。` +
       `它属于${c.category}，在${c.year}年推出。` +
@@ -603,6 +664,98 @@
       `${c.description} ` +
       `再告诉你几个有趣的小知识：${c.facts.join("；")}。`
     );
+  }
+
+  // 卡片快速朗读词（双语）
+  function cardText(c) {
+    if (state.lang === "en") {
+      return `The ${brandEn(c)} ${nameEn(c)}. A ${CATEGORY_EN[c.category] || c.category} from ${COUNTRY_EN[c.country] || c.country}.`;
+    }
+    return `${c.name}。${c.summary}`;
+  }
+
+  // ---------- 整页自动连读 ----------
+  const autoState = { queue: [], index: 0 };
+
+  function toggleAutoRead() {
+    if (state.autoReading) {
+      stopAutoRead();
+    } else {
+      startAutoRead();
+    }
+  }
+
+  function startAutoRead() {
+    if (!TTS) return;
+    const list = getFiltered();
+    if (list.length === 0) return;
+    stopSpeaking();
+    autoState.queue = list;
+    autoState.index = 0;
+    state.autoReading = true;
+    if (el.autoReadBtn) {
+      el.autoReadBtn.classList.add("reading");
+      el.autoReadBtn.innerHTML = state.lang === "en" ? "⏹ Stop reading" : "⏹ 停止连读";
+    }
+    readNext();
+  }
+
+  function readNext() {
+    if (!state.autoReading) return;
+    if (autoState.index >= autoState.queue.length) {
+      stopAutoRead();
+      return;
+    }
+    const c = autoState.queue[autoState.index];
+    highlightReadingCard(c.id);
+    const u = makeUtterance(cardText(c));
+    u.onend = () => {
+      if (!state.autoReading) return;
+      autoState.index += 1;
+      readNext();
+    };
+    u.onerror = () => stopAutoRead();
+    window.speechSynthesis.speak(u);
+  }
+
+  function highlightReadingCard(id) {
+    el.cardGrid.querySelectorAll(".car-card.reading").forEach((n) => n.classList.remove("reading"));
+    const card = el.cardGrid.querySelector(`.car-card[data-id="${id}"]`);
+    if (card) {
+      card.classList.add("reading");
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function stopAutoRead() {
+    if (!TTS) return;
+    const was = state.autoReading;
+    state.autoReading = false;
+    if (was) window.speechSynthesis.cancel();
+    el.cardGrid.querySelectorAll(".car-card.reading").forEach((n) => n.classList.remove("reading"));
+    if (el.autoReadBtn) {
+      el.autoReadBtn.classList.remove("reading");
+      el.autoReadBtn.innerHTML = state.lang === "en" ? "🎧 Read this page" : "🎧 连读本页";
+    }
+  }
+
+  // ---------- 语言切换 ----------
+  function initLang() {
+    const saved = localStorage.getItem("cars-lang");
+    if (saved === "en") state.lang = "en";
+    updateLangUI();
+  }
+  function toggleLang() {
+    stopSpeaking();
+    stopAutoRead();
+    state.lang = state.lang === "en" ? "zh" : "en";
+    localStorage.setItem("cars-lang", state.lang);
+    updateLangUI();
+  }
+  function updateLangUI() {
+    if (el.langToggle) el.langToggle.innerHTML = state.lang === "en" ? "🌐 EN" : "🌐 中";
+    if (el.autoReadBtn && !state.autoReading)
+      el.autoReadBtn.innerHTML = state.lang === "en" ? "🎧 Read this page" : "🎧 连读本页";
   }
 
   // ---------- 车型对比 ----------
