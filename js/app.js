@@ -931,7 +931,8 @@
 
   // ---------- 小小汽车问答小游戏 ----------
   const QUIZ_TOTAL = 10;
-  const quiz = { questions: [], index: 0, score: 0, answered: false, mode: "mix" };
+  const QUIZ_TIME = 10000; // 计时模式每题限时（毫秒）
+  const quiz = { questions: [], index: 0, score: 0, answered: false, mode: "mix", streak: 0, bestStreak: 0, timerRAF: null };
 
   // 用 Web Audio 合成答对/答错音效（无需外部文件，离线可用）
   let audioCtx = null;
@@ -1032,7 +1033,68 @@
     category: { label: "🏷️ 认识车型", desc: "猜它是哪种车", keys: ["category"], pool: () => cars },
     battle: { label: "🏆 巅峰对决", desc: "比谁更快更强", keys: ["fastest", "power", "quick"], pool: () => cars },
     super: { label: "🏎️ 超跑专场", desc: "只考超级跑车", keys: ALL_KEYS, pool: () => (superPool.length >= 4 ? superPool : cars) },
+    timed: { label: "⏱️ 计时挑战", desc: "每题限时抢答", keys: ALL_KEYS, pool: () => cars, timed: true },
   };
+
+  // 连击彩带庆祝
+  function launchConfetti() {
+    const host = el.quizModal;
+    if (!host) return;
+    const colors = ["#38bdf8", "#a855f7", "#f43f5e", "#22c55e", "#f7b500", "#fb923c"];
+    for (let i = 0; i < 26; i++) {
+      const p = document.createElement("span");
+      p.className = "confetti-piece";
+      p.style.left = Math.random() * 100 + "%";
+      p.style.background = colors[i % colors.length];
+      p.style.animationDelay = Math.random() * 0.2 + "s";
+      host.appendChild(p);
+      setTimeout(() => p.remove(), 1500);
+    }
+  }
+
+  function clearTimer() {
+    if (quiz.timerRAF) {
+      cancelAnimationFrame(quiz.timerRAF);
+      quiz.timerRAF = null;
+    }
+  }
+
+  function startTimer() {
+    clearTimer();
+    const bar = el.quizBody.querySelector("#quizTimerBar");
+    if (!bar) return;
+    const start = performance.now();
+    const tick = (now) => {
+      const left = Math.max(0, 1 - (now - start) / QUIZ_TIME);
+      bar.style.width = left * 100 + "%";
+      bar.classList.toggle("low", left <= 0.3);
+      if (left <= 0) {
+        timeUp();
+        return;
+      }
+      quiz.timerRAF = requestAnimationFrame(tick);
+    };
+    quiz.timerRAF = requestAnimationFrame(tick);
+  }
+
+  function timeUp() {
+    clearTimer();
+    if (quiz.answered) return;
+    quiz.answered = true;
+    quiz.streak = 0;
+    const q = quiz.questions[quiz.index];
+    el.quizBody.querySelectorAll(".quiz-option").forEach((b, i) => {
+      b.disabled = true;
+      if (q.options[i].correct) b.classList.add("correct");
+    });
+    const fb = el.quizBody.querySelector("#quizFeedback");
+    const ans = q.options.find((o) => o.correct);
+    const last = quiz.index + 1 >= QUIZ_TOTAL;
+    fb.innerHTML = `<span class="fb-no">⏰ 时间到！正确答案是：${ans ? ans.label : ""}</span>`;
+    playSound("no");
+    readText("时间到啦");
+    fb.innerHTML += `<button class="quiz-next" data-next>${last ? "🏆 看结果" : "下一题 →"}</button>`;
+  }
 
   function genQuestions(n, modeKey) {
     const mode = QUIZ_MODES[modeKey] || QUIZ_MODES.mix;
@@ -1069,24 +1131,31 @@
     quiz.questions = genQuestions(QUIZ_TOTAL, modeKey);
     quiz.index = 0;
     quiz.score = 0;
+    quiz.streak = 0;
+    quiz.bestStreak = 0;
     renderQuestion();
   }
 
   function closeQuiz() {
     if (!el.quizModal) return;
+    clearTimer();
     el.quizModal.hidden = true;
     document.body.style.overflow = "";
     if (TTS) window.speechSynthesis.cancel();
   }
 
   function renderQuestion() {
+    clearTimer();
     const q = quiz.questions[quiz.index];
+    const timed = QUIZ_MODES[quiz.mode] && QUIZ_MODES[quiz.mode].timed;
     quiz.answered = false;
     const progress = (quiz.index / QUIZ_TOTAL) * 100;
+    const streakBadge = quiz.streak >= 2 ? `<span id="quizStreak" class="quiz-streak">🔥 ${quiz.streak}</span>` : `<span id="quizStreak"></span>`;
     el.quizBody.innerHTML = `
       <div class="quiz-top">
         <div class="quiz-progress"><span style="width:${progress}%"></span></div>
-        <div class="quiz-meta"><span>第 ${quiz.index + 1} / ${QUIZ_TOTAL} 题</span><span id="quizScore">⭐ ${quiz.score}</span></div>
+        <div class="quiz-meta"><span>第 ${quiz.index + 1} / ${QUIZ_TOTAL} 题</span>${streakBadge}<span id="quizScore">⭐ ${quiz.score}</span></div>
+        ${timed ? `<div class="quiz-timer"><span id="quizTimerBar" style="width:100%"></span></div>` : ""}
       </div>
       ${q.image ? `<div class="quiz-image"><img src="${q.image}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ""}
       <div class="quiz-prompt-row">
@@ -1097,11 +1166,13 @@
         ${q.options.map((o, i) => `<button class="quiz-option" data-opt="${i}">${o.label}</button>`).join("")}
       </div>
       <div class="quiz-feedback" id="quizFeedback"></div>`;
+    if (timed) startTimer();
   }
 
   function answerQuiz(optIndex) {
     if (quiz.answered) return;
     quiz.answered = true;
+    clearTimer();
     const q = quiz.questions[quiz.index];
     const chosen = q.options[optIndex];
     const btns = el.quizBody.querySelectorAll(".quiz-option");
@@ -1114,12 +1185,26 @@
     const last = quiz.index + 1 >= QUIZ_TOTAL;
     if (chosen.correct) {
       quiz.score += 1;
+      quiz.streak += 1;
+      if (quiz.streak > quiz.bestStreak) quiz.bestStreak = quiz.streak;
       const scoreEl = el.quizBody.querySelector("#quizScore");
       if (scoreEl) scoreEl.textContent = `⭐ ${quiz.score}`;
-      fb.innerHTML = `<span class="fb-ok">🎉 答对啦！</span>`;
-      playSound("ok");
-      readText(rand(["答对啦，真棒", "太厉害了", "答对了，你真聪明"]));
+      const streakEl = el.quizBody.querySelector("#quizStreak");
+      if (streakEl) streakEl.className = "quiz-streak";
+      if (streakEl && quiz.streak >= 2) streakEl.textContent = `🔥 ${quiz.streak}`;
+      let combo = "";
+      if (quiz.streak >= 3) {
+        combo = `<span class="quiz-combo">🔥 ${quiz.streak} 连对！太棒啦！</span>`;
+        launchConfetti();
+        playSound("ok");
+        readText(rand(["连对啦，太厉害了", "哇，连对好几题", "你是汽车小天才"]));
+      } else {
+        playSound("ok");
+        readText(rand(["答对啦，真棒", "太厉害了", "答对了，你真聪明"]));
+      }
+      fb.innerHTML = `<span class="fb-ok">🎉 答对啦！</span>${combo}`;
     } else {
+      quiz.streak = 0;
       const ans = q.options.find((o) => o.correct);
       fb.innerHTML = `<span class="fb-no">😊 没关系，正确答案是：${ans ? ans.label : ""}</span>`;
       playSound("no");
@@ -1129,6 +1214,7 @@
   }
 
   function nextQuiz() {
+    clearTimer();
     quiz.index += 1;
     if (quiz.index >= QUIZ_TOTAL) renderResult();
     else renderQuestion();
@@ -1145,10 +1231,13 @@
     else if (pct >= 0.6) msg = "很棒哦，继续加油！👍";
     else if (pct >= 0.3) msg = "不错的开始，再玩一次会更好！💪";
     else msg = "没关系，多玩几次就记住啦！🚗";
+    const streakLine = quiz.bestStreak >= 2 ? `<p class="quiz-result-streak">🔥 最高连对 ${quiz.bestStreak} 题</p>` : "";
+    if (pct >= 0.6) launchConfetti();
     el.quizBody.innerHTML = `
       <div class="quiz-result">
         <div class="quiz-result-stars">${starStr}</div>
         <h3>你答对了 ${s} / ${t} 题</h3>
+        ${streakLine}
         <p class="quiz-result-msg">${msg}</p>
         <div class="quiz-result-actions">
           <button class="quiz-next" data-replay>🔁 再玩一次</button>
