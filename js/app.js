@@ -1036,6 +1036,23 @@
     timed: { label: "⏱️ 计时挑战", desc: "每题限时抢答", keys: ALL_KEYS, pool: () => cars, timed: true },
   };
 
+  // 本地最佳成绩（按模式记录）
+  const QUIZ_BEST_KEY = "quizBest";
+  function loadBest() {
+    try {
+      return JSON.parse(localStorage.getItem(QUIZ_BEST_KEY)) || {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function saveBest(obj) {
+    try {
+      localStorage.setItem(QUIZ_BEST_KEY, JSON.stringify(obj));
+    } catch (e) {
+      /* 忽略存储错误 */
+    }
+  }
+
   // 连击彩带庆祝
   function launchConfetti() {
     const host = el.quizModal;
@@ -1113,13 +1130,19 @@
   }
 
   function renderStart() {
+    const best = loadBest();
     el.quizBody.innerHTML = `
       <div class="quiz-start">
         <div class="quiz-start-emoji">🎮</div>
         <h3 class="quiz-start-title">选择一个挑战</h3>
         <div class="quiz-modes">
           ${Object.entries(QUIZ_MODES)
-            .map(([k, m]) => `<button class="quiz-mode" data-mode="${k}"><span class="qm-label">${m.label}</span><span class="qm-desc">${m.desc}</span></button>`)
+            .map(
+              ([k, m]) =>
+                `<button class="quiz-mode" data-mode="${k}"><span class="qm-label">${m.label}</span><span class="qm-desc">${m.desc}</span>${
+                  best[k] != null ? `<span class="qm-best">🏅 最佳 ${best[k]}/${QUIZ_TOTAL}</span>` : ""
+                }</button>`
+            )
             .join("")}
         </div>
       </div>`;
@@ -1232,12 +1255,25 @@
     else if (pct >= 0.3) msg = "不错的开始，再玩一次会更好！💪";
     else msg = "没关系，多玩几次就记住啦！🚗";
     const streakLine = quiz.bestStreak >= 2 ? `<p class="quiz-result-streak">🔥 最高连对 ${quiz.bestStreak} 题</p>` : "";
-    if (pct >= 0.6) launchConfetti();
+    const best = loadBest();
+    const prev = best[quiz.mode] != null ? best[quiz.mode] : -1;
+    const isRecord = s > prev;
+    if (isRecord) {
+      best[quiz.mode] = s;
+      saveBest(best);
+    }
+    const bestNow = Math.max(s, prev);
+    const modeLabel = (QUIZ_MODES[quiz.mode] || QUIZ_MODES.mix).label;
+    const recordLine = isRecord ? `<p class="quiz-record">🎉 新纪录！</p>` : "";
+    const bestLine = `<p class="quiz-best">${modeLabel} 最佳：${bestNow} / ${t}</p>`;
+    if (pct >= 0.6 || isRecord) launchConfetti();
     el.quizBody.innerHTML = `
       <div class="quiz-result">
         <div class="quiz-result-stars">${starStr}</div>
         <h3>你答对了 ${s} / ${t} 题</h3>
+        ${recordLine}
         ${streakLine}
+        ${bestLine}
         <p class="quiz-result-msg">${msg}</p>
         <div class="quiz-result-actions">
           <button class="quiz-next" data-replay>🔁 再玩一次</button>
@@ -1245,7 +1281,7 @@
           <button class="quiz-close-btn" data-close-quiz>关闭</button>
         </div>
       </div>`;
-    readText(`你答对了${s}题。${msg}`);
+    readText(`${isRecord ? "新纪录！" : ""}你答对了${s}题。${msg}`);
   }
 
   function bindQuiz() {
