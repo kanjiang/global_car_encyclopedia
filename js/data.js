@@ -684,7 +684,7 @@ const CARS_WITH_IMAGE = [
 ];
 
 CARS.forEach((c) => {
-  c.image = CARS_WITH_IMAGE.includes(c.id) ? `images/${c.id}.jpg` : null;
+  c.image = CARS_WITH_IMAGE.includes(c.id) ? `images/${c.id}.webp` : null;
 });
 
 // 供 app.js 使用

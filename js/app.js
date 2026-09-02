@@ -1,101 +1,23 @@
-(function () {
+// 页面主逻辑：轮播、筛选、卡片、详情、对比、滚动效果
+(function (App) {
   "use strict";
 
-  const cars = window.CARS || [];
-  const TTS = typeof window !== "undefined" && "speechSynthesis" in window;
-
-  // 状态
-  const state = {
-    keyword: "",
-    category: "全部",
-    country: "全部",
-    sort: "default",
-    compare: [],
-    lang: "zh", // 朗读语言：zh | en
-    autoReading: false,
-  };
-  const COMPARE_MAX = 4;
-
-  // 中英对照词典（用于英文朗读）
-  const CATEGORY_EN = {
-    超级跑车: "hypercar",
-    跑车: "sports car",
-    豪华轿车: "luxury sedan",
-    SUV: "SUV",
-    电动车: "electric car",
-    越野: "off-road vehicle",
-    经典老爷车: "classic car",
-    家用轿车: "family car",
-  };
-  const COUNTRY_EN = {
-    法国: "France",
-    意大利: "Italy",
-    德国: "Germany",
-    日本: "Japan",
-    英国: "the United Kingdom",
-    美国: "the United States",
-    中国: "China",
-    瑞典: "Sweden",
-    韩国: "South Korea",
-  };
-  // 从「英文 中文」混合串里取拉丁字母/数字部分
-  function latinPart(str) {
-    const m = (str || "").match(/[A-Za-z0-9][A-Za-z0-9 .\-]*/g);
-    return m ? m.join(" ").trim() : "";
-  }
-  const brandEn = (c) => latinPart(c.brand) || c.brand;
-  const nameEn = (c) => latinPart(c.name) || c.name;
-
-  // DOM
-  const el = {
-    heroSearch: document.getElementById("heroSearch"),
-    heroSearchBtn: document.getElementById("heroSearchBtn"),
-    heroChips: document.getElementById("heroChips"),
-    statsGrid: document.getElementById("statsGrid"),
-    totalCount: document.getElementById("totalCount"),
-    searchInput: document.getElementById("searchInput"),
-    categoryChips: document.getElementById("categoryChips"),
-    countrySelect: document.getElementById("countrySelect"),
-    sortSelect: document.getElementById("sortSelect"),
-    cardGrid: document.getElementById("cardGrid"),
-    emptyState: document.getElementById("emptyState"),
-    modal: document.getElementById("modal"),
-    modalBody: document.getElementById("modalBody"),
-    themeToggle: document.getElementById("themeToggle"),
-    header: document.querySelector(".site-header"),
-    scrollProgress: document.getElementById("scrollProgress"),
-    carousel: document.getElementById("carousel"),
-    carSlides: document.getElementById("carSlides"),
-    carDots: document.getElementById("carDots"),
-    carPrev: document.getElementById("carPrev"),
-    carNext: document.getElementById("carNext"),
-    carProgress: document.getElementById("carProgress"),
-    compareBar: document.getElementById("compareBar"),
-    compareChips: document.getElementById("compareChips"),
-    compareCount: document.getElementById("compareCount"),
-    compareClear: document.getElementById("compareClear"),
-    compareGo: document.getElementById("compareGo"),
-    compareModal: document.getElementById("compareModal"),
-    compareBody: document.getElementById("compareBody"),
-    langToggle: document.getElementById("langToggle"),
-    autoReadBtn: document.getElementById("autoReadBtn"),
-    quizStartBtn: document.getElementById("quizStartBtn"),
-    quizModal: document.getElementById("quizModal"),
-    quizBody: document.getElementById("quizBody"),
-  };
-
-  // 本周精选（按此顺序展示的车型 id；缺失则自动跳过）
-  const FEATURED_IDS = [
-    "bugatti-chiron",
-    "koenigsegg-jesko",
-    "lamborghini-aventador",
-    "porsche-911",
-    "ferrari-f8",
-  ];
-
-  const uniq = (arr) => Array.from(new Set(arr));
-  const categories = ["全部", ...uniq(cars.map((c) => c.category))];
-  const countries = ["全部", ...uniq(cars.map((c) => c.country))];
+  const {
+    cars, state, el, TTS, COMPARE_MAX, uniq, categories, countries, FEATURED_IDS,
+    prefersReducedMotion, showOverlay, hideOverlay, topOverlay, trapFocus,
+    initTheme, toggleTheme,
+  } = App;
+  const stopSpeaking = (...a) => App.stopSpeaking(...a);
+  const stopAutoRead = (...a) => App.stopAutoRead(...a);
+  const speak = (...a) => App.speak(...a);
+  const cardText = (...a) => App.cardText(...a);
+  const buildNarration = (...a) => App.buildNarration(...a);
+  const toggleAutoRead = (...a) => App.toggleAutoRead(...a);
+  const toggleLang = (...a) => App.toggleLang(...a);
+  const initLang = (...a) => App.initLang(...a);
+  const primeVoices = (...a) => App.primeVoices(...a);
+  const bindQuiz = (...a) => App.bindQuiz(...a);
+  const closeQuiz = (...a) => App.closeQuiz(...a);
 
   // ---------- 初始化 ----------
   function init() {
@@ -110,8 +32,9 @@
     initScrollFx();
     bindQuiz();
     if (TTS) {
-      window.speechSynthesis.getVoices();
-      window.speechSynthesis.onvoiceschanged = () => {};
+      primeVoices();
+      window.setTimeout(primeVoices, 250);
+      window.speechSynthesis.onvoiceschanged = primeVoices;
       window.addEventListener("beforeunload", stopSpeaking);
       initLang();
     } else {
@@ -121,6 +44,10 @@
   }
 
   function renderStats() {
+    if (cars.length === 0) {
+      el.statsGrid.innerHTML = "";
+      return;
+    }
     const brands = uniq(cars.map((c) => c.brand)).length;
     const maxSpeed = Math.max(...cars.map((c) => c.topSpeed));
     const stats = [
@@ -158,6 +85,7 @@
       requestAnimationFrame(step);
     });
   }
+
 
   // ---------- 本周精选轮播 ----------
   const carState = { index: 0, list: [], raf: null, elapsed: 0, last: 0, paused: false, duration: 5500 };
@@ -253,6 +181,8 @@
   function startCarousel() {
     if (carState.raf) cancelAnimationFrame(carState.raf);
     resetProgress();
+    // 用户要求减少动态效果时不自动播放，左右按钮/手势仍可用
+    if (prefersReducedMotion()) return;
     carState.raf = requestAnimationFrame(carTick);
   }
 
@@ -335,6 +265,7 @@
       .join("");
   }
 
+
   // ---------- 事件 ----------
   function bindEvents() {
     el.searchInput.addEventListener("input", (e) => {
@@ -405,10 +336,14 @@
     });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
-        closeModal();
-        closeCompare();
-        closeQuiz();
+        // 只关最上层，避免一次 Esc 连关多个弹窗
+        const top = topOverlay();
+        if (top === el.quizModal) closeQuiz();
+        else if (top === el.compareModal) closeCompare();
+        else if (top === el.modal) closeModal();
+        return;
       }
+      trapFocus(e);
     });
 
     // 对比栏 & 对比弹窗
@@ -447,8 +382,9 @@
       el.searchInput.value = value;
     }
     render();
-    document.getElementById("explore").scrollIntoView({ behavior: "smooth" });
+    document.getElementById("explore").scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth" });
   }
+
 
   // ---------- 过滤 & 排序 ----------
   function getFiltered() {
@@ -478,7 +414,7 @@
         list.sort((a, b) => a.accel - b.accel);
         break;
       case "power-desc":
-        list.sort((a, b) => parseInt(b.power) - parseInt(a.power));
+        list.sort((a, b) => (parseInt(b.power, 10) || 0) - (parseInt(a.power, 10) || 0));
         break;
       case "year-asc":
         list.sort((a, b) => a.year - b.year);
@@ -488,6 +424,7 @@
     }
     return list;
   }
+
 
   // ---------- 渲染卡片 ----------
   function render() {
@@ -536,6 +473,7 @@
       </div>
     </article>`;
   }
+
 
   // ---------- 详情弹窗 ----------
   function openModal(id) {
@@ -587,181 +525,14 @@
         </div>
       </div>`;
 
-    el.modal.hidden = false;
-    document.body.style.overflow = "hidden";
+    showOverlay(el.modal);
   }
 
   function closeModal() {
-    el.modal.hidden = true;
-    document.body.style.overflow = "";
+    hideOverlay(el.modal);
     stopSpeaking();
   }
 
-  // ---------- 朗读讲解（语音合成，双语，面向小朋友） ----------
-  let currentSpeakBtn = null;
-
-  function pickVoice(lang) {
-    if (!TTS) return null;
-    const vs = window.speechSynthesis.getVoices() || [];
-    const re = lang === "en" ? /^en[-_]?/i : /^zh[-_]?/i;
-    return vs.find((v) => re.test(v.lang)) || null;
-  }
-
-  const speakLabel = () => (state.lang === "en" ? "🔊 Read aloud" : "🔊 朗读讲解");
-  const stopLabel = () => (state.lang === "en" ? "⏸ Stop" : "⏸ 停止朗读");
-
-  function resetSpeakBtn() {
-    if (!currentSpeakBtn) return;
-    currentSpeakBtn.classList.remove("speaking");
-    if (currentSpeakBtn.hasAttribute("data-speak")) currentSpeakBtn.innerHTML = speakLabel();
-    currentSpeakBtn = null;
-  }
-
-  function stopSpeaking() {
-    if (!TTS) return;
-    window.speechSynthesis.cancel();
-    resetSpeakBtn();
-  }
-
-  // 构造一条朗读语句（不管理按钮状态），返回 utterance
-  function makeUtterance(text) {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = state.lang === "en" ? "en-US" : "zh-CN";
-    u.rate = 0.92; // 稍慢，方便小朋友听懂
-    u.pitch = 1.12; // 稍微活泼一点
-    const v = pickVoice(state.lang);
-    if (v) u.voice = v;
-    return u;
-  }
-
-  function speak(text, btn) {
-    if (!TTS) return;
-    stopAutoRead();
-    const synth = window.speechSynthesis;
-    const same = currentSpeakBtn === btn;
-    synth.cancel();
-    resetSpeakBtn();
-    if (same) return; // 再次点击同一个按钮 = 停止
-
-    const u = makeUtterance(text);
-    u.onend = u.onerror = () => {
-      if (currentSpeakBtn === btn) resetSpeakBtn();
-    };
-    currentSpeakBtn = btn;
-    btn.classList.add("speaking");
-    if (btn.hasAttribute("data-speak")) btn.innerHTML = stopLabel();
-    synth.speak(u);
-  }
-
-  // 详情讲解词（双语）
-  function buildNarration(c) {
-    if (state.lang === "en") {
-      return (
-        `The ${brandEn(c)} ${nameEn(c)} is a ${CATEGORY_EN[c.category] || c.category} from ${COUNTRY_EN[c.country] || c.country}, introduced in ${c.year}. ` +
-        `It reaches a top speed of ${c.topSpeed} kilometers per hour, and accelerates from zero to one hundred in just ${c.accel} seconds.`
-      );
-    }
-    return (
-      `这是来自${c.country}的${c.brand}，${c.name}。${c.summary}。` +
-      `它属于${c.category}，在${c.year}年推出。` +
-      `它跑起来最快每小时可以到${c.topSpeed}公里，` +
-      `从停下来加速到每小时一百公里，只要${c.accel}秒哦。` +
-      `${c.description} ` +
-      `再告诉你几个有趣的小知识：${c.facts.join("；")}。`
-    );
-  }
-
-  // 卡片快速朗读词（双语）
-  function cardText(c) {
-    if (state.lang === "en") {
-      return `The ${brandEn(c)} ${nameEn(c)}. A ${CATEGORY_EN[c.category] || c.category} from ${COUNTRY_EN[c.country] || c.country}.`;
-    }
-    return `${c.name}。${c.summary}`;
-  }
-
-  // ---------- 整页自动连读 ----------
-  const autoState = { queue: [], index: 0 };
-
-  function toggleAutoRead() {
-    if (state.autoReading) {
-      stopAutoRead();
-    } else {
-      startAutoRead();
-    }
-  }
-
-  function startAutoRead() {
-    if (!TTS) return;
-    const list = getFiltered();
-    if (list.length === 0) return;
-    stopSpeaking();
-    autoState.queue = list;
-    autoState.index = 0;
-    state.autoReading = true;
-    if (el.autoReadBtn) {
-      el.autoReadBtn.classList.add("reading");
-      el.autoReadBtn.innerHTML = state.lang === "en" ? "⏹ Stop reading" : "⏹ 停止连读";
-    }
-    readNext();
-  }
-
-  function readNext() {
-    if (!state.autoReading) return;
-    if (autoState.index >= autoState.queue.length) {
-      stopAutoRead();
-      return;
-    }
-    const c = autoState.queue[autoState.index];
-    highlightReadingCard(c.id);
-    const u = makeUtterance(cardText(c));
-    u.onend = () => {
-      if (!state.autoReading) return;
-      autoState.index += 1;
-      readNext();
-    };
-    u.onerror = () => stopAutoRead();
-    window.speechSynthesis.speak(u);
-  }
-
-  function highlightReadingCard(id) {
-    el.cardGrid.querySelectorAll(".car-card.reading").forEach((n) => n.classList.remove("reading"));
-    const card = el.cardGrid.querySelector(`.car-card[data-id="${id}"]`);
-    if (card) {
-      card.classList.add("reading");
-      card.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }
-
-  function stopAutoRead() {
-    if (!TTS) return;
-    const was = state.autoReading;
-    state.autoReading = false;
-    if (was) window.speechSynthesis.cancel();
-    el.cardGrid.querySelectorAll(".car-card.reading").forEach((n) => n.classList.remove("reading"));
-    if (el.autoReadBtn) {
-      el.autoReadBtn.classList.remove("reading");
-      el.autoReadBtn.innerHTML = state.lang === "en" ? "🎧 Read this page" : "🎧 连读本页";
-    }
-  }
-
-  // ---------- 语言切换 ----------
-  function initLang() {
-    const saved = localStorage.getItem("cars-lang");
-    if (saved === "en") state.lang = "en";
-    updateLangUI();
-  }
-  function toggleLang() {
-    stopSpeaking();
-    stopAutoRead();
-    state.lang = state.lang === "en" ? "zh" : "en";
-    localStorage.setItem("cars-lang", state.lang);
-    updateLangUI();
-  }
-  function updateLangUI() {
-    if (el.langToggle) el.langToggle.innerHTML = state.lang === "en" ? "🌐 EN" : "🌐 中";
-    if (el.autoReadBtn && !state.autoReading)
-      el.autoReadBtn.innerHTML = state.lang === "en" ? "🎧 Read this page" : "🎧 连读本页";
-  }
 
   // ---------- 车型对比 ----------
   function toggleCompare(id) {
@@ -869,14 +640,13 @@
         ${header}
         ${rowsHtml}
       </div>`;
-    el.compareModal.hidden = false;
-    document.body.style.overflow = "hidden";
+    showOverlay(el.compareModal);
   }
 
   function closeCompare() {
-    if (el.compareModal) el.compareModal.hidden = true;
-    if (el.modal && el.modal.hidden) document.body.style.overflow = "";
+    hideOverlay(el.compareModal);
   }
+
 
   // ---------- 滚动渐入 ----------
   let revealObserver = null;
@@ -900,21 +670,39 @@
     el.cardGrid.querySelectorAll(".reveal").forEach((n) => revealObserver.observe(n));
   }
 
+
   // ---------- 卡片 3D 倾斜 ----------
   function applyTilt() {
-    if (window.matchMedia("(hover: none)").matches) return;
+    if (window.matchMedia("(hover: none)").matches || prefersReducedMotion()) return;
     el.cardGrid.querySelectorAll(".car-card").forEach((card) => {
+      let raf = null;
+      let rect = null;
+      card.addEventListener("mouseenter", () => {
+        rect = card.getBoundingClientRect();
+      });
+      // 用 rAF 合帧，避免每次 mousemove 都读布局
       card.addEventListener("mousemove", (e) => {
-        const r = card.getBoundingClientRect();
-        const px = (e.clientX - r.left) / r.width - 0.5;
-        const py = (e.clientY - r.top) / r.height - 0.5;
-        card.style.transform = `perspective(900px) rotateY(${px * 7}deg) rotateX(${-py * 7}deg) translateY(-6px)`;
+        if (raf) return;
+        const { clientX, clientY } = e;
+        raf = requestAnimationFrame(() => {
+          raf = null;
+          const r = rect || card.getBoundingClientRect();
+          const px = (clientX - r.left) / r.width - 0.5;
+          const py = (clientY - r.top) / r.height - 0.5;
+          card.style.transform = `perspective(900px) rotateY(${px * 7}deg) rotateX(${-py * 7}deg) translateY(-6px)`;
+        });
       });
       card.addEventListener("mouseleave", () => {
+        if (raf) {
+          cancelAnimationFrame(raf);
+          raf = null;
+        }
+        rect = null;
         card.style.transform = "";
       });
     });
   }
+
 
   // ---------- 滚动进度 & 头部阴影 ----------
   function initScrollFx() {
@@ -929,417 +717,8 @@
     onScroll();
   }
 
-  // ---------- 小小汽车问答小游戏 ----------
-  const QUIZ_TOTAL = 10;
-  const QUIZ_TIME = 10000; // 计时模式每题限时（毫秒）
-  const quiz = { questions: [], index: 0, score: 0, answered: false, mode: "mix", streak: 0, bestStreak: 0, timerRAF: null };
 
-  // 用 Web Audio 合成答对/答错音效（无需外部文件，离线可用）
-  let audioCtx = null;
-  function playSound(kind) {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    try {
-      audioCtx = audioCtx || new AC();
-      if (audioCtx.state === "suspended") audioCtx.resume();
-      const notes = kind === "ok" ? [660, 880, 1320] : [320, 200];
-      let t = audioCtx.currentTime;
-      notes.forEach((f) => {
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        o.type = kind === "ok" ? "triangle" : "sawtooth";
-        o.frequency.value = f;
-        o.connect(g);
-        g.connect(audioCtx.destination);
-        const dur = kind === "ok" ? 0.12 : 0.18;
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        o.start(t);
-        o.stop(t + dur);
-        t += dur * 0.9;
-      });
-    } catch (e) {
-      /* 忽略音频错误 */
-    }
-  }
-
-  function shuffle(arr) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-  const sample = (arr, k) => shuffle(arr).slice(0, k);
-  const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-  // 面向浏览器直接朗读一段中文（用于读题/鼓励语）
-  function readText(text) {
-    if (!TTS) return;
-    const synth = window.speechSynthesis;
-    synth.cancel();
-    const u = new SpeechSynthesisUtterance(String(text).replace(/[^\u4e00-\u9fa5A-Za-z0-9，。？！、,.?! ]/g, ""));
-    u.lang = "zh-CN";
-    u.rate = 0.95;
-    u.pitch = 1.12;
-    const v = pickVoice("zh");
-    if (v) u.voice = v;
-    synth.speak(u);
-  }
-
-  function nameOptions(correct) {
-    const others = sample(cars.filter((c) => c.id !== correct.id), 3);
-    return shuffle([correct, ...others]).map((c) => ({ label: `${c.emoji} ${c.name}`, correct: c.id === correct.id }));
-  }
-  function valueQuestion(prompt, valFn, mode, pool) {
-    const src = pool && pool.length >= 4 ? pool : cars;
-    const four = sample(src, 4);
-    const vals = four.map(valFn);
-    const best = mode === "min" ? Math.min(...vals) : Math.max(...vals);
-    const options = shuffle(four).map((c) => ({ label: `${c.emoji} ${c.name}`, correct: valFn(c) === best }));
-    return { prompt, options };
-  }
-  function pickFromSet(list, correctVal) {
-    const distract = sample(list.filter((v) => v !== correctVal), 3);
-    return shuffle([correctVal, ...distract]).map((v) => ({ label: v, correct: v === correctVal }));
-  }
-
-  const QUIZ_BUILDERS = {
-    name: (pool) => {
-      const c = rand(pool);
-      return { prompt: "🔍 猜猜这是哪辆车？", image: c.image, options: nameOptions(c) };
-    },
-    country: (pool) => {
-      const c = rand(pool);
-      return { prompt: `🌍 ${c.name} 来自哪个国家？`, image: c.image, options: pickFromSet(uniq(cars.map((x) => x.country)), c.country) };
-    },
-    category: (pool) => {
-      const c = rand(pool);
-      return { prompt: `🏷️ ${c.name} 属于哪种车？`, image: c.image, options: pickFromSet(uniq(cars.map((x) => x.category)), c.category) };
-    },
-    fastest: (pool) => valueQuestion("🏁 下面哪辆车跑得最快？", (c) => c.topSpeed, "max", pool),
-    power: (pool) => valueQuestion("💪 谁的马力最大？", (c) => parseInt(c.power, 10) || 0, "max", pool),
-    quick: (pool) => valueQuestion("⚡ 谁的加速最快（0-100 最快）？", (c) => c.accel, "min", pool),
-  };
-
-  const ALL_KEYS = Object.keys(QUIZ_BUILDERS);
-  const superPool = cars.filter((c) => /跑车|超跑|超级/.test(c.category));
-  const QUIZ_MODES = {
-    mix: { label: "🎲 混合挑战", desc: "各种题型都有", keys: ALL_KEYS, pool: () => cars },
-    name: { label: "🔍 看图猜车", desc: "看图片猜车名", keys: ["name"], pool: () => cars },
-    country: { label: "🌍 认识国家", desc: "猜车来自哪国", keys: ["country"], pool: () => cars },
-    category: { label: "🏷️ 认识车型", desc: "猜它是哪种车", keys: ["category"], pool: () => cars },
-    battle: { label: "🏆 巅峰对决", desc: "比谁更快更强", keys: ["fastest", "power", "quick"], pool: () => cars },
-    super: { label: "🏎️ 超跑专场", desc: "只考超级跑车", keys: ALL_KEYS, pool: () => (superPool.length >= 4 ? superPool : cars) },
-    timed: { label: "⏱️ 计时挑战", desc: "每题限时抢答", keys: ALL_KEYS, pool: () => cars, timed: true },
-  };
-
-  // 本地最佳成绩（按模式记录）
-  const QUIZ_BEST_KEY = "quizBest";
-  function loadBest() {
-    try {
-      return JSON.parse(localStorage.getItem(QUIZ_BEST_KEY)) || {};
-    } catch (e) {
-      return {};
-    }
-  }
-  function saveBest(obj) {
-    try {
-      localStorage.setItem(QUIZ_BEST_KEY, JSON.stringify(obj));
-    } catch (e) {
-      /* 忽略存储错误 */
-    }
-  }
-
-  // 连击彩带庆祝
-  function launchConfetti() {
-    const host = el.quizModal;
-    if (!host) return;
-    const colors = ["#38bdf8", "#a855f7", "#f43f5e", "#22c55e", "#f7b500", "#fb923c"];
-    for (let i = 0; i < 26; i++) {
-      const p = document.createElement("span");
-      p.className = "confetti-piece";
-      p.style.left = Math.random() * 100 + "%";
-      p.style.background = colors[i % colors.length];
-      p.style.animationDelay = Math.random() * 0.2 + "s";
-      host.appendChild(p);
-      setTimeout(() => p.remove(), 1500);
-    }
-  }
-
-  function clearTimer() {
-    if (quiz.timerRAF) {
-      cancelAnimationFrame(quiz.timerRAF);
-      quiz.timerRAF = null;
-    }
-  }
-
-  function startTimer() {
-    clearTimer();
-    const bar = el.quizBody.querySelector("#quizTimerBar");
-    if (!bar) return;
-    const start = performance.now();
-    const tick = (now) => {
-      const left = Math.max(0, 1 - (now - start) / QUIZ_TIME);
-      bar.style.width = left * 100 + "%";
-      bar.classList.toggle("low", left <= 0.3);
-      if (left <= 0) {
-        timeUp();
-        return;
-      }
-      quiz.timerRAF = requestAnimationFrame(tick);
-    };
-    quiz.timerRAF = requestAnimationFrame(tick);
-  }
-
-  function timeUp() {
-    clearTimer();
-    if (quiz.answered) return;
-    quiz.answered = true;
-    quiz.streak = 0;
-    const q = quiz.questions[quiz.index];
-    el.quizBody.querySelectorAll(".quiz-option").forEach((b, i) => {
-      b.disabled = true;
-      if (q.options[i].correct) b.classList.add("correct");
-    });
-    const fb = el.quizBody.querySelector("#quizFeedback");
-    const ans = q.options.find((o) => o.correct);
-    const last = quiz.index + 1 >= QUIZ_TOTAL;
-    fb.innerHTML = `<span class="fb-no">⏰ 时间到！正确答案是：${ans ? ans.label : ""}</span>`;
-    playSound("no");
-    readText("时间到啦");
-    fb.innerHTML += `<button class="quiz-next" data-next>${last ? "🏆 看结果" : "下一题 →"}</button>`;
-  }
-
-  function genQuestions(n, modeKey) {
-    const mode = QUIZ_MODES[modeKey] || QUIZ_MODES.mix;
-    const pool = mode.pool();
-    const qs = [];
-    for (let i = 0; i < n; i++) qs.push(QUIZ_BUILDERS[rand(mode.keys)](pool));
-    return qs;
-  }
-
-  function openQuiz() {
-    stopSpeaking();
-    stopAutoRead();
-    el.quizModal.hidden = false;
-    document.body.style.overflow = "hidden";
-    renderStart();
-  }
-
-  function renderStart() {
-    const best = loadBest();
-    el.quizBody.innerHTML = `
-      <div class="quiz-start">
-        <div class="quiz-start-emoji">🎮</div>
-        <h3 class="quiz-start-title">选择一个挑战</h3>
-        <div class="quiz-modes">
-          ${Object.entries(QUIZ_MODES)
-            .map(
-              ([k, m]) =>
-                `<button class="quiz-mode" data-mode="${k}"><span class="qm-label">${m.label}</span><span class="qm-desc">${m.desc}</span>${
-                  best[k] != null ? `<span class="qm-best">🏅 最佳 ${best[k]}/${QUIZ_TOTAL}</span>` : ""
-                }</button>`
-            )
-            .join("")}
-        </div>
-      </div>`;
-  }
-
-  function startGame(modeKey) {
-    stopSpeaking();
-    quiz.mode = modeKey;
-    quiz.questions = genQuestions(QUIZ_TOTAL, modeKey);
-    quiz.index = 0;
-    quiz.score = 0;
-    quiz.streak = 0;
-    quiz.bestStreak = 0;
-    renderQuestion();
-  }
-
-  function closeQuiz() {
-    if (!el.quizModal) return;
-    clearTimer();
-    el.quizModal.hidden = true;
-    document.body.style.overflow = "";
-    if (TTS) window.speechSynthesis.cancel();
-  }
-
-  function renderQuestion() {
-    clearTimer();
-    const q = quiz.questions[quiz.index];
-    const timed = QUIZ_MODES[quiz.mode] && QUIZ_MODES[quiz.mode].timed;
-    quiz.answered = false;
-    const progress = (quiz.index / QUIZ_TOTAL) * 100;
-    const streakBadge = quiz.streak >= 2 ? `<span id="quizStreak" class="quiz-streak">🔥 ${quiz.streak}</span>` : `<span id="quizStreak"></span>`;
-    el.quizBody.innerHTML = `
-      <div class="quiz-top">
-        <div class="quiz-progress"><span style="width:${progress}%"></span></div>
-        <div class="quiz-meta"><span>第 ${quiz.index + 1} / ${QUIZ_TOTAL} 题</span>${streakBadge}<span id="quizScore">⭐ ${quiz.score}</span></div>
-        ${timed ? `<div class="quiz-timer"><span id="quizTimerBar" style="width:100%"></span></div>` : ""}
-      </div>
-      ${q.image ? `<div class="quiz-image"><img src="${q.image}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ""}
-      <div class="quiz-prompt-row">
-        <h3 class="quiz-prompt">${q.prompt}</h3>
-        ${TTS ? `<button class="quiz-read" data-read aria-label="读题">🔊 读题</button>` : ""}
-      </div>
-      <div class="quiz-options">
-        ${q.options.map((o, i) => `<button class="quiz-option" data-opt="${i}">${o.label}</button>`).join("")}
-      </div>
-      <div class="quiz-feedback" id="quizFeedback"></div>`;
-    if (timed) startTimer();
-  }
-
-  function answerQuiz(optIndex) {
-    if (quiz.answered) return;
-    quiz.answered = true;
-    clearTimer();
-    const q = quiz.questions[quiz.index];
-    const chosen = q.options[optIndex];
-    const btns = el.quizBody.querySelectorAll(".quiz-option");
-    btns.forEach((b, i) => {
-      b.disabled = true;
-      if (q.options[i].correct) b.classList.add("correct");
-      if (i === optIndex && !chosen.correct) b.classList.add("wrong");
-    });
-    const fb = el.quizBody.querySelector("#quizFeedback");
-    const last = quiz.index + 1 >= QUIZ_TOTAL;
-    if (chosen.correct) {
-      quiz.score += 1;
-      quiz.streak += 1;
-      if (quiz.streak > quiz.bestStreak) quiz.bestStreak = quiz.streak;
-      const scoreEl = el.quizBody.querySelector("#quizScore");
-      if (scoreEl) scoreEl.textContent = `⭐ ${quiz.score}`;
-      const streakEl = el.quizBody.querySelector("#quizStreak");
-      if (streakEl) streakEl.className = "quiz-streak";
-      if (streakEl && quiz.streak >= 2) streakEl.textContent = `🔥 ${quiz.streak}`;
-      let combo = "";
-      if (quiz.streak >= 3) {
-        combo = `<span class="quiz-combo">🔥 ${quiz.streak} 连对！太棒啦！</span>`;
-        launchConfetti();
-        playSound("ok");
-        readText(rand(["连对啦，太厉害了", "哇，连对好几题", "你是汽车小天才"]));
-      } else {
-        playSound("ok");
-        readText(rand(["答对啦，真棒", "太厉害了", "答对了，你真聪明"]));
-      }
-      fb.innerHTML = `<span class="fb-ok">🎉 答对啦！</span>${combo}`;
-    } else {
-      quiz.streak = 0;
-      const ans = q.options.find((o) => o.correct);
-      fb.innerHTML = `<span class="fb-no">😊 没关系，正确答案是：${ans ? ans.label : ""}</span>`;
-      playSound("no");
-      readText("没关系，再试试看");
-    }
-    fb.innerHTML += `<button class="quiz-next" data-next>${last ? "🏆 看结果" : "下一题 →"}</button>`;
-  }
-
-  function nextQuiz() {
-    clearTimer();
-    quiz.index += 1;
-    if (quiz.index >= QUIZ_TOTAL) renderResult();
-    else renderQuestion();
-  }
-
-  function renderResult() {
-    const s = quiz.score;
-    const t = QUIZ_TOTAL;
-    const pct = s / t;
-    const stars = pct >= 0.9 ? 3 : pct >= 0.6 ? 2 : pct >= 0.3 ? 1 : 0;
-    const starStr = "⭐".repeat(stars) + "☆".repeat(3 - stars);
-    let msg;
-    if (pct >= 0.9) msg = "太厉害啦，你是汽车小达人！🏆";
-    else if (pct >= 0.6) msg = "很棒哦，继续加油！👍";
-    else if (pct >= 0.3) msg = "不错的开始，再玩一次会更好！💪";
-    else msg = "没关系，多玩几次就记住啦！🚗";
-    const streakLine = quiz.bestStreak >= 2 ? `<p class="quiz-result-streak">🔥 最高连对 ${quiz.bestStreak} 题</p>` : "";
-    const best = loadBest();
-    const prev = best[quiz.mode] != null ? best[quiz.mode] : -1;
-    const isRecord = s > prev;
-    if (isRecord) {
-      best[quiz.mode] = s;
-      saveBest(best);
-    }
-    const bestNow = Math.max(s, prev);
-    const modeLabel = (QUIZ_MODES[quiz.mode] || QUIZ_MODES.mix).label;
-    const recordLine = isRecord ? `<p class="quiz-record">🎉 新纪录！</p>` : "";
-    const bestLine = `<p class="quiz-best">${modeLabel} 最佳：${bestNow} / ${t}</p>`;
-    if (pct >= 0.6 || isRecord) launchConfetti();
-    el.quizBody.innerHTML = `
-      <div class="quiz-result">
-        <div class="quiz-result-stars">${starStr}</div>
-        <h3>你答对了 ${s} / ${t} 题</h3>
-        ${recordLine}
-        ${streakLine}
-        ${bestLine}
-        <p class="quiz-result-msg">${msg}</p>
-        <div class="quiz-result-actions">
-          <button class="quiz-next" data-replay>🔁 再玩一次</button>
-          <button class="quiz-close-btn" data-restart>🎮 换个挑战</button>
-          <button class="quiz-close-btn" data-close-quiz>关闭</button>
-        </div>
-      </div>`;
-    readText(`${isRecord ? "新纪录！" : ""}你答对了${s}题。${msg}`);
-  }
-
-  function bindQuiz() {
-    if (el.quizStartBtn) el.quizStartBtn.addEventListener("click", openQuiz);
-    if (!el.quizModal) return;
-    el.quizModal.addEventListener("click", (e) => {
-      if (e.target.hasAttribute("data-close-quiz")) {
-        closeQuiz();
-        return;
-      }
-      const modeBtn = e.target.closest("[data-mode]");
-      if (modeBtn) {
-        startGame(modeBtn.dataset.mode);
-        return;
-      }
-      const opt = e.target.closest("[data-opt]");
-      if (opt) {
-        answerQuiz(parseInt(opt.dataset.opt, 10));
-        return;
-      }
-      if (e.target.closest("[data-next]")) {
-        nextQuiz();
-        return;
-      }
-      if (e.target.closest("[data-replay]")) {
-        startGame(quiz.mode);
-        return;
-      }
-      if (e.target.closest("[data-restart]")) {
-        renderStart();
-        return;
-      }
-      if (e.target.closest("[data-read]")) {
-        readText(quiz.questions[quiz.index].prompt);
-      }
-    });
-  }
-
-  // ---------- 主题 ----------
-  function initTheme() {
-    const saved = localStorage.getItem("cars-theme");
-    if (saved === "light") {
-      document.documentElement.setAttribute("data-theme", "light");
-      el.themeToggle.textContent = "☀️";
-    }
-  }
-  function toggleTheme() {
-    const isLight = document.documentElement.getAttribute("data-theme") === "light";
-    if (isLight) {
-      document.documentElement.removeAttribute("data-theme");
-      el.themeToggle.textContent = "🌙";
-      localStorage.setItem("cars-theme", "dark");
-    } else {
-      document.documentElement.setAttribute("data-theme", "light");
-      el.themeToggle.textContent = "☀️";
-      localStorage.setItem("cars-theme", "light");
-    }
-  }
+  Object.assign(App, { getFiltered, render, openModal, closeModal, closeCompare, openCompare });
 
   init();
-})();
+})(window.CarApp);
