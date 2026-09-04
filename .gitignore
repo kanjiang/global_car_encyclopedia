@@ -10,3 +10,8 @@ desktop.ini
 
 # 临时文件
 *.tmp
+*.webp.tmp
+
+# 开发期依赖（仅测试用，网站本身零依赖）
+node_modules/
+package-lock.json

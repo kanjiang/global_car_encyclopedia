@@ -6,7 +6,7 @@
 ![No Build](https://img.shields.io/badge/build-zero%20dependency-brightgreen)
 ![Offline Ready](https://img.shields.io/badge/offline-ready-success)
 
-一个面向大众的**全球汽车科普图鉴**网页。收录来自德国、意大利、美国、日本、英国、法国、瑞典、中国等地的经典与前沿车型，涵盖超级跑车、豪华轿车、SUV、电动车、越野车、经典老爷车等类型。每款车都提供动力参数、驱动形式与有趣的冷知识。
+一个面向大众的**全球汽车科普图鉴**网页。收录来自德国、意大利、美国、日本、英国、法国、瑞典、中国、韩国、奥地利等地的经典与前沿车型，涵盖超级跑车、跑车、豪华轿车、SUV、电动车、越野车、经典老爷车、皮卡、卡车、工程车、巴士、赛车共 13 个类别。每款车都提供动力参数、驱动形式与有趣的冷知识。
 
 > 🔗 **在线预览**：<https://kanjiang.github.io/global_car_encyclopedia/>
 > （若暂时打不开，说明仓库 Settings → Pages 尚未启用，见下方「部署到 GitHub Pages」）
@@ -72,7 +72,14 @@
 
 > 说明：Wikimedia 在中国大陆无法直接访问，所以图片不是在线热链，而是通过境外图片代理（images.weserv.nl）预先下载到本地。`download_images.ps1` 保留了下载逻辑，需要重新拉取或替换图片时可再次运行（该脚本运行时需要能联网）。
 
-图片以 **WebP** 格式存放（900px 宽），相比原始 JPG 体积从 3.08 MB 降到 2.05 MB。重新下载图片后，可以用下面的脚本再压一遍：
+图片以 **WebP** 格式存放（900px 宽、质量 72），由代理直接转码，无需本地再压缩：
+
+```powershell
+.\download_images.ps1           # 只下载 images/ 里缺失的图（已有的跳过）
+.\download_images.ps1 -Force    # 全部重新下载
+```
+
+如果手上是本地的 JPG/PNG 想转成同规格的 WebP，可以用 `optimize_images.py`：
 
 ```bash
 pip install pillow
@@ -133,7 +140,26 @@ python -m http.server 8000
 }
 ```
 
-保存后刷新页面，新车型会自动出现在图鉴中，统计数据、筛选项也会随之更新。
+保存后刷新页面，新车型会自动出现在图鉴中，统计数据、筛选项、问答题库也会随之更新。
+
+如果这辆车要配真实照片，还需要两步：
+
+1. 在 `download_images.ps1` 的 `$map` 里加一行 `"your-car-id" = "upload.wikimedia.org/wikipedia/commons/x/xx/文件名.jpg"`（原图宽度不足 960px 的加 `orig:` 前缀），然后运行脚本下载
+2. 把 `your-car-id` 加进 `js/data.js` 末尾的 `CARS_WITH_IMAGE` 数组
+
+新类别（如「皮卡」「赛车」）若要支持英文朗读，再在 `js/core.js` 的 `CATEGORY_EN` / `COUNTRY_EN` 里补一条中英对照。
+
+## ✅ 测试
+
+仓库自带一套 jsdom 行为测试（仅开发期依赖，网站本身依然零依赖）：
+
+```bash
+npm install     # 只装 jsdom
+npm test        # 模块依赖检查 + 端到端行为测试
+npm run check   # 只做各模块语法检查
+```
+
+`tests/smoke.js` 会用真实的 `index.html` 与脚本加载顺序跑一遍：渲染、搜索筛选、车型对比、弹窗焦点与滚动锁、中英文切换，并批量生成 840 道问答题验证「每题恰好一个正确答案、同一轮不重复」，最后校验所有引用的车图文件都存在。
 
 ## 📝 说明
 

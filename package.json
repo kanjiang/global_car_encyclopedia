@@ -1,0 +1,15 @@
+{
+  "name": "global-car-encyclopedia",
+  "version": "1.0.0",
+  "private": true,
+  "description": "全球汽车科普图鉴 · 纯静态网页（本文件仅用于开发期测试，网站运行时不需要任何依赖）",
+  "scripts": {
+    "test": "node tests/check-deps.js && node tests/smoke.js",
+    "check": "node --check js/core.js && node --check js/tts.js && node --check js/quiz.js && node --check js/app.js && node --check js/data.js",
+    "serve": "python -m http.server 8000"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  },
+  "license": "MIT"
+}

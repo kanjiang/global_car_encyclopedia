@@ -28,6 +28,11 @@ window.CarApp = window.CarApp || {};
     越野: "off-road vehicle",
     经典老爷车: "classic car",
     家用轿车: "family car",
+    皮卡: "pickup truck",
+    卡车: "truck",
+    工程车: "construction vehicle",
+    巴士: "bus",
+    赛车: "race car",
   };
   const COUNTRY_EN = {
     法国: "France",
@@ -39,6 +44,7 @@ window.CarApp = window.CarApp || {};
     中国: "China",
     瑞典: "Sweden",
     韩国: "South Korea",
+    奥地利: "Austria",
   };
   // 从「英文 中文」混合串里取拉丁字母/数字部分
   function latinPart(str) {
