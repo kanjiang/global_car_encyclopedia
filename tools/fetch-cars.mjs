@@ -163,15 +163,30 @@ function isElectric(box, extract) {
   return /electric/i.test(power) || /(battery electric|全电动|纯电)/i.test(extract) || (!box.engine && !!box.electric_range);
 }
 
-function pickBrand(box, title) {
-  const raw = plain(box.manufacturer || box.aka || "").split(/[,(]/)[0].trim();
-  const guess = raw || title.split(" ")[0];
-  for (const [en, zh] of Object.entries(BRAND_ZH)) {
-    if (guess.toLowerCase().includes(en.toLowerCase()) || title.toLowerCase().startsWith(en.toLowerCase())) {
+// 长名优先，避免「Alfa Romeo」被「Alfa」之类的短名抢先命中
+const BRAND_KEYS = Object.keys(BRAND_ZH).sort((a, b) => b.length - a.length);
+
+function matchBrand(text, prefixOnly) {
+  const t = (text || "").toLowerCase().trim();
+  if (!t) return null;
+  for (const en of BRAND_KEYS) {
+    const k = en.toLowerCase();
+    if (prefixOnly ? t.startsWith(k) : t.includes(k)) {
+      const zh = BRAND_ZH[en];
       return { brand: zh === en ? en : `${en} ${zh}`, zh };
     }
   }
-  return { brand: guess, zh: "" };
+  return null;
+}
+
+/**
+ * 品牌优先看条目标题开头，其次才看信息框的 manufacturer。
+ * 因为 manufacturer 常写成集团名（AUDI E7X 的制造商是「上汽大众」，
+ * 直接采信就会把奥迪标成大众）。
+ */
+function pickBrand(box, title) {
+  const maker = plain(box.manufacturer || box.aka || "").split(/[,(]/)[0].trim();
+  return matchBrand(title, true) || matchBrand(maker, false) || { brand: maker || title.split(" ")[0], zh: "" };
 }
 
 function pickCountry(box, brandZh) {
