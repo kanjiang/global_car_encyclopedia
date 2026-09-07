@@ -86,9 +86,38 @@ const ACCENTS = [
   "linear-gradient(135deg,#c31432,#240b36)", "linear-gradient(135deg,#0f2027,#2c5364)",
 ];
 
+/** 信息框的 engine 常是多行列表，优先取带排量数字的那一段 */
+function pickEngine(box) {
+  const parts = plain(box.engine || "")
+    .split(/[,;、]/)
+    .map((p) => p.replace(/^[:：\s]+|[:：\s]+$/g, ""))
+    .filter(Boolean);
+  const pick = parts.find((p) => /\d/.test(p)) || parts[0];
+  return pick ? pick.slice(0, 40).trim() : null;
+}
+
+/**
+ * 展开 wikitext 模板：{{unbulleted list|A|B}} 这类只是排版用的，要保留里面的内容，
+ * 否则字段里会留下 "{{unbulleted list | Petrol plug-in hybri" 这样的残缺文本。
+ */
+function stripTemplates(s) {
+  let out = String(s);
+  for (let i = 0; i < 6; i++) {
+    const next = out.replace(/\{\{([^{}]*)\}\}/g, (_, body) => {
+      const parts = body.split("|").map((p) => p.trim());
+      const name = (parts.shift() || "").toLowerCase();
+      if (/^(convert|cvt)$/.test(name)) return parts.slice(0, 2).join(" ");
+      return parts.filter((p) => p && !p.includes("=")).join("、");
+    });
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
 /** 去掉 wikitext 里的链接、模板、脚注等标记 */
 function plain(v) {
-  return String(v)
+  return stripTemplates(v)
     .replace(/<ref[^>]*>[\s\S]*?<\/ref>|<ref[^>]*\/>/g, "")
     .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, "$1")
     .replace(/'''?/g, "")
@@ -261,7 +290,7 @@ async function buildDraft(title, knownIds) {
     category,
     year: pickYear(box, title),
     priceRMB: null,
-    engine: electric ? "纯电驱动" : plain(box.engine || "").split(/[,;]/)[0].slice(0, 40) || null,
+    engine: electric ? "纯电驱动" : pickEngine(box),
     power: power ? `${power} 马力` : null,
     topSpeed: null,
     accel: null,
