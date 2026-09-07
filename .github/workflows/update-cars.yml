@@ -68,11 +68,27 @@ jobs:
           git add data/ images/
           git commit -m "chore: 自动发现 ${{ steps.result.outputs.count }} 款热门新车（待补全后合并）"
           git push -u origin "$BRANCH" --force
-          gh pr create \
+
+          # 若仓库没开「Allow GitHub Actions to create and approve pull requests」，
+          # 开 PR 会被拒绝。这时不让整个任务失败，把分支链接写进任务摘要即可。
+          if gh pr create \
             --title "🚗 自动发现 ${{ steps.result.outputs.count }} 款热门新车" \
             --body-file pr-body.md \
             --base "${{ github.event.repository.default_branch }}" \
-            --head "$BRANCH"
+            --head "$BRANCH"; then
+            echo "已创建 PR。" >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### ⚠️ 自动开 PR 被拒绝"
+              echo "草稿已推到分支 \`$BRANCH\`，手动开 PR："
+              echo "<${{ github.event.repository.html_url }}/compare/$BRANCH?expand=1>"
+              echo ""
+              echo "要让它以后能自动开 PR：仓库 Settings → Actions → General →"
+              echo "勾选 *Allow GitHub Actions to create and approve pull requests*。"
+              echo ""
+              cat pr-body.md
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: 没有新车时的说明
         if: steps.result.outputs.count == '0'
