@@ -29,7 +29,9 @@ console.log(`
 
 维基百科的信息框通常没有极速、零百加速和价格，中文条目也不一定存在，所以这些字段需要人工或 AI 补全（缺字段的条目会被 \`cars:merge\` 拦住，不会流入线上数据）。
 
-1. 编辑 \`data/incoming.json\`，补齐每条的 \`_todo\` 字段，并把 \`_todo\` 清空
+最省事的办法：在 Cursor 里切到这个分支，让 agent 执行「补全 data/incoming.json 里的 _todo 字段并合并」，它会查资料、写中文文案、跑完校验。手动做则是：
+
+1. 编辑 \`data/incoming.json\`，补齐每条的 \`_todo\` 字段（极速、加速、参考价、座位数），并把 \`_todo\` 清空
 2. 给每辆车写 1–2 条小朋友能看懂的冷知识（\`facts\`）
 3. 核对自动判定的 \`category\` / \`country\` / \`power\` 是否准确
 4. 运行 \`npm run cars:merge\` 并入 \`js/data.js\`，再运行 \`npm test\`
