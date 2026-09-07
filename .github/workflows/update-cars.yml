@@ -69,9 +69,13 @@ jobs:
           git commit -m "chore: 自动发现 ${{ steps.result.outputs.count }} 款热门新车（待补全后合并）"
           git push -u origin "$BRANCH" --force
 
+          # 同一个月重复跑时分支上已有 PR，这时更新它的说明而不是新开一个
+          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr edit "$BRANCH" --title "🚗 自动发现 ${{ steps.result.outputs.count }} 款热门新车" --body-file pr-body.md
+            echo "已更新分支 \`$BRANCH\` 上的 PR。" >> "$GITHUB_STEP_SUMMARY"
           # 若仓库没开「Allow GitHub Actions to create and approve pull requests」，
           # 开 PR 会被拒绝。这时不让整个任务失败，把分支链接写进任务摘要即可。
-          if gh pr create \
+          elif gh pr create \
             --title "🚗 自动发现 ${{ steps.result.outputs.count }} 款热门新车" \
             --body-file pr-body.md \
             --base "${{ github.event.repository.default_branch }}" \
