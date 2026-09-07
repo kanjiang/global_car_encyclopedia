@@ -4,9 +4,13 @@
   "private": true,
   "description": "全球汽车科普图鉴 · 纯静态网页（本文件仅用于开发期测试，网站运行时不需要任何依赖）",
   "scripts": {
-    "test": "node tests/check-deps.js && node tests/smoke.js",
+    "test": "node tests/check-deps.js && node tests/check-data.js && node tests/smoke.js",
     "check": "node --check js/core.js && node --check js/tts.js && node --check js/quiz.js && node --check js/app.js && node --check js/data.js",
-    "serve": "python -m http.server 8000"
+    "serve": "python -m http.server 8000",
+    "cars:discover": "node tools/discover-cars.mjs",
+    "cars:fetch": "node tools/fetch-cars.mjs",
+    "cars:merge": "node tools/merge-cars.mjs",
+    "cars:prune": "node tools/prune-images.mjs"
   },
   "devDependencies": {
     "jsdom": "^24.1.3"

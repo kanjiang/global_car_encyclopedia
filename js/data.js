@@ -1581,6 +1581,30 @@ const CARS = [
       "高速时产生的下压力超过车身重量，理论上它能贴着隧道顶倒着开。",
     ],
   },
+  {
+    id: "byd-racco",
+    name: "BYD Racco 海獭",
+    brand: "BYD 比亚迪",
+    country: "中国",
+    category: "电动车",
+    year: 2026,
+    priceRMB: "约 10 万元（日本 214.5 万日元起）",
+    engine: "纯电驱动",
+    power: "64 马力",
+    topSpeed: 130,
+    accel: 13,
+    drivetrain: "前驱",
+    seats: 4,
+    accent: "linear-gradient(135deg,#16222a,#3a6073)",
+    emoji: "🔌",
+    summary: "比亚迪海獭，是中国比亚迪汽车专门为日本市场打造的第一款纯电动轻型车。",
+    description:
+      "比亚迪海獭，是中国比亚迪汽车专门为日本市场打造的第一款纯电动轻型车。此车于2025年东京车展首次亮相，并自2026年7月开始发售，其售价由214.5万日元起，但搭配了如双电动趟门等通常预留给高价多功能休旅车的设备，主打一个价廉物美。有传媒甚至指这价钱基本上等同于民众为了应对地震而购买的贮电装置，但是此车就有4个轮胎，可以一并解决车主和家人通勤的问题。",
+    facts: [
+      "日本「轻自动车」有严格的尺寸和 64 马力上限，所以这类小车都长得方方正正。",
+      "车名 Racco 来自日语「海獭」，因为它圆滚滚的样子很像抱着贝壳的海獭。",
+    ],
+  },
 ];
 
 // 真实车型照片（来源：Wikimedia Commons，自由授权）
@@ -1601,6 +1625,7 @@ const CARS_WITH_IMAGE = [
   "jaguar-etype", "routemaster", "ford-f150", "dodge-challenger", "chevrolet-camaro",
   "ford-model-t", "cat-797", "liebherr-t282", "rosenbauer-panther", "volvo-fh",
   "alpine-a110", "porsche-919", "redbull-rb19",
+  "byd-racco",
 ];
 
 CARS.forEach((c) => {

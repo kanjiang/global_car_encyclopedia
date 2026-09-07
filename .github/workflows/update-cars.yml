@@ -1,0 +1,79 @@
+name: 自动发现热门新车
+
+# 每月自动到维基百科上找新推出、且最近访问量最高的车型，抓成草稿并开一个 PR。
+# 不直接写入 main：机器抓不到极速/加速/价格，中文文案也需要人润色，
+# 所以由人在 PR 里补全后再合并，避免半成品数据上线。
+on:
+  schedule:
+    - cron: "0 2 1 * *" # 每月 1 日 02:00 UTC（北京时间 10:00）
+  workflow_dispatch:
+    inputs:
+      years:
+        description: "看哪几年推出的车（逗号分隔，留空为最近两年）"
+        required: false
+        default: ""
+      top:
+        description: "最多提名几款"
+        required: false
+        default: "8"
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # GitHub 的机器能直连维基百科，无需配置 WIKI_PROXY
+      - name: 发现热门新车
+        run: |
+          ARGS="--top ${{ github.event.inputs.top || '8' }}"
+          if [ -n "${{ github.event.inputs.years }}" ]; then
+            ARGS="$ARGS --years ${{ github.event.inputs.years }}"
+          fi
+          node tools/discover-cars.mjs $ARGS
+
+      - name: 抓取草稿与配图
+        run: node tools/fetch-cars.mjs
+
+      - name: 统计结果
+        id: result
+        run: echo "count=$(node -e "console.log((require('./data/incoming.json')||[]).length)")" >> "$GITHUB_OUTPUT"
+
+      - name: 校验仓库仍然健康
+        if: steps.result.outputs.count != '0'
+        run: |
+          npm install --no-save jsdom
+          npm test
+
+      - name: 生成 PR 说明
+        if: steps.result.outputs.count != '0'
+        run: node tools/report-incoming.mjs > pr-body.md
+
+      - name: 提交并开 PR
+        if: steps.result.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="auto/new-cars-$(date +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add data/ images/
+          git commit -m "chore: 自动发现 ${{ steps.result.outputs.count }} 款热门新车（待补全后合并）"
+          git push -u origin "$BRANCH" --force
+          gh pr create \
+            --title "🚗 自动发现 ${{ steps.result.outputs.count }} 款热门新车" \
+            --body-file pr-body.md \
+            --base "${{ github.event.repository.default_branch }}" \
+            --head "$BRANCH"
+
+      - name: 没有新车时的说明
+        if: steps.result.outputs.count == '0'
+        run: echo "这次没有发现值得收录的新车，不创建 PR。"

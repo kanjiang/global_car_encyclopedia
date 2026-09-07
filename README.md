@@ -59,6 +59,15 @@
 │   ├── quiz.js          # 「小小汽车问答」小游戏
 │   └── app.js           # 页面主逻辑：轮播、筛选、卡片、详情、对比、滚动效果
 ├── images/              # 各车型真实照片（WebP，本地存放，离线可用）
+├── tools/               # 联网抓取新车型的脚本（仅开发/CI 用，页面运行时不依赖）
+│   ├── wiki.mjs         # 维基 API 封装：取数、下载配图、读取现有数据
+│   ├── discover-cars.mjs# 发现新车：按分类找新车型，按访问量排热门
+│   ├── fetch-cars.mjs   # 抓成草稿：中文简介、品牌产地类别、配图
+│   ├── merge-cars.mjs   # 校验后并入 data.js
+│   ├── prune-images.mjs # 清理没人引用的孤立车图
+│   └── seen.json        # 已处理过的维基条目，避免重复提名
+├── tests/               # jsdom 行为测试与数据质量校验
+├── .github/workflows/   # 每月自动发现新车并开 PR
 ├── download_images.ps1  # 重新下载 / 更新车图的脚本
 ├── optimize_images.py   # 把车图批量转换 / 压缩为 WebP
 └── README.md
@@ -149,15 +158,63 @@ python -m http.server 8000
 
 新类别（如「皮卡」「赛车」）若要支持英文朗读，再在 `js/core.js` 的 `CATEGORY_EN` / `COUNTRY_EN` 里补一条中英对照。
 
+## 🔄 自动发现热门新车（联网更新）
+
+新车型不用手工盯着。仓库带一条抓取管线，每月自动到维基百科上找**新推出、且最近访问量最高**的车型，抓成草稿并开一个 PR。
+
+### 为什么是「CI 抓取」而不是「页面实时联网」
+
+| | CI 定时抓取（本项目采用） | 页面运行时联网 |
+| --- | --- | --- |
+| 国内能用 | ✅ 抓取在 GitHub 机器上完成 | ❌ 维基百科在国内访问不了 |
+| 离线可用 | ✅ 图片与数据都在仓库里 | ❌ 断网就看不到新车 |
+| 数据质量 | ✅ 合并前有人过一眼 | ❌ 抓到什么显示什么 |
+| 页面复杂度 | ✅ 页面仍是纯静态、零依赖 | ❌ 要处理超时、CORS、缓存 |
+
+抓取产物直接进仓库，GitHub Pages 会自动重新部署，所以线上页面照样是「自动更新」的。
+
+### 流水线
+
+```bash
+npm run cars:discover   # 1. 找候选：某年推出的新车 + 按 60 天访问量排热门 -> data/candidates.json
+npm run cars:fetch      # 2. 抓草稿：中文简介、品牌/产地/类别、功率、配图 -> data/incoming.json
+#    3. 人工/AI 补全每条的 _todo 字段（极速、加速、价格、冷知识）
+npm run cars:merge      # 4. 校验并入 js/data.js（有字段没补就直接拒绝）
+npm test                # 5. 回归测试
+npm run cars:prune      # 可选：清掉被否决车型残留的孤立配图
+```
+
+**能自动拿到**：中文科普正文（中文维基导语，简体）、品牌与中文车名、产地、类别、年份、动力形式、功率、驱动形式、配图。
+**必须人工补**：极速、零百加速、参考价、冷知识——维基信息框里通常没有。缺字段的草稿会被 `cars:merge` 拦住，不会流入线上数据。
+
+不想收录的车，从 `data/incoming.json` 删掉，并在 `tools/seen.json` 里把它的维基条目名记为 `"-"`，以后不再被提名。
+
+### 定时任务
+
+`.github/workflows/update-cars.yml` 每月 1 日运行（也可在 Actions 页面手动触发，可指定年份与数量）。它会跑完发现与抓取、执行一遍测试，然后带着草稿和配图开 PR，PR 说明里列好每辆车待补哪些字段。**它不会直接改 `main`**，所以机器抓来的半成品不可能自己上线。
+
+### 在国内本机跑抓取脚本
+
+维基百科在国内连不上，需要给脚本指一个代理（CI 上不用配）：
+
+```powershell
+$env:WIKI_PROXY = "https://api.allorigins.win/raw?url={url}"
+npm run cars:discover
+```
+
+如果本机装了会拦截 TLS 的企业代理或杀毒软件，Node 可能报 `unable to get local issuer certificate`——脚本会自动改用系统 `curl` 重试，也可以用 `$env:WIKI_TRANSPORT = "curl"` 强制。
+
 ## ✅ 测试
 
 仓库自带一套 jsdom 行为测试（仅开发期依赖，网站本身依然零依赖）：
 
 ```bash
 npm install     # 只装 jsdom
-npm test        # 模块依赖检查 + 端到端行为测试
+npm test        # 模块依赖检查 + 数据质量校验 + 端到端行为测试
 npm run check   # 只做各模块语法检查
 ```
+
+`tests/check-data.js` 是数据闸门：校验每款车字段齐全、类型正确、数值落在合理范围、配图存在、类别与产地都有中英对照，并确保草稿标记字段（`_todo` 等）没被误并进正式数据。
 
 `tests/smoke.js` 会用真实的 `index.html` 与脚本加载顺序跑一遍：渲染、搜索筛选、车型对比、弹窗焦点与滚动锁、中英文切换，并批量生成 840 道问答题验证「每题恰好一个正确答案、同一轮不重复」，最后校验所有引用的车图文件都存在。
 
