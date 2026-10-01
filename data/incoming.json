@@ -1,1 +1,174 @@
-[]
+[
+  {
+    "id": "ferrari-luce",
+    "name": "Ferrari Luce Luce",
+    "brand": "Ferrari 法拉利",
+    "country": "意大利",
+    "category": "电动车",
+    "year": 2026,
+    "priceRMB": null,
+    "engine": "纯电驱动",
+    "power": "1049 马力",
+    "topSpeed": null,
+    "accel": null,
+    "drivetrain": "四驱",
+    "seats": null,
+    "accent": "linear-gradient(135deg,#2c3e50,#4ca1af)",
+    "emoji": "🔌",
+    "summary": "法拉利Luce是意大利汽车制造商法拉利生产的纯电动豪华轿车。",
+    "description": "法拉利Luce是意大利汽车制造商法拉利生产的纯电动豪华轿车。它是法拉利首款量产电动车，也是该品牌首款五人座车款。",
+    "facts": [],
+    "_source": {
+      "wikiTitle": "Ferrari Luce",
+      "zhTitle": "法拉利Luce",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/5/53/2027_Ferrari_Luce%2C_front_left.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original"
+    },
+    "_todo": [
+      "priceRMB",
+      "topSpeed",
+      "accel",
+      "seats",
+      "facts"
+    ],
+    "_imageBytes": 81988
+  },
+  {
+    "id": "audi-q9",
+    "name": "Audi Q9",
+    "brand": "Audi 奥迪",
+    "country": "德国",
+    "category": "电动车",
+    "year": 2026,
+    "priceRMB": null,
+    "engine": "纯电驱动",
+    "power": null,
+    "topSpeed": null,
+    "accel": null,
+    "drivetrain": "四驱",
+    "seats": null,
+    "accent": "linear-gradient(135deg,#42275a,#734b6d)",
+    "emoji": "🔌",
+    "summary": "",
+    "description": "",
+    "facts": [],
+    "_source": {
+      "wikiTitle": "Audi Q9",
+      "zhTitle": "",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/c/ce/2026_Audi_Q9_right_front_-_Autowizja_%28cropped%29_%28cropped%29.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original"
+    },
+    "_todo": [
+      "priceRMB",
+      "power",
+      "topSpeed",
+      "accel",
+      "seats",
+      "summary",
+      "description",
+      "facts"
+    ],
+    "_imageBytes": 42020
+  },
+  {
+    "id": "audi-nuvolari",
+    "name": "Audi Nuvolari",
+    "brand": "Audi 奥迪",
+    "country": "德国",
+    "category": "电动车",
+    "year": 2026,
+    "priceRMB": null,
+    "engine": "纯电驱动",
+    "power": "1001 马力",
+    "topSpeed": null,
+    "accel": null,
+    "drivetrain": "四驱",
+    "seats": null,
+    "accent": "linear-gradient(135deg,#1f4037,#99f2c8)",
+    "emoji": "🔌",
+    "summary": "",
+    "description": "",
+    "facts": [],
+    "_source": {
+      "wikiTitle": "Audi Nuvolari",
+      "zhTitle": "",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/0/09/27_Audi_Nuvolari.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original"
+    },
+    "_todo": [
+      "priceRMB",
+      "topSpeed",
+      "accel",
+      "seats",
+      "summary",
+      "description",
+      "facts"
+    ],
+    "_imageBytes": 103548
+  },
+  {
+    "id": "bmw-ix3",
+    "name": "BMW iX3",
+    "brand": "BMW 宝马",
+    "country": "德国",
+    "category": "电动车",
+    "year": 2025,
+    "priceRMB": null,
+    "engine": "纯电驱动",
+    "power": "469 马力",
+    "topSpeed": null,
+    "accel": null,
+    "drivetrain": "四驱",
+    "seats": null,
+    "accent": "linear-gradient(135deg,#0f2027,#2c5364)",
+    "emoji": "🔌",
+    "summary": "宝马iX3是德国汽车制造商宝马生产的一款纯电动紧凑型豪华跨界休旅车，定位为宝马X…",
+    "description": "宝马iX3是德国汽车制造商宝马生产的一款纯电动紧凑型豪华跨界休旅车，定位为宝马X系列中的纯电动车款。第一代iX3代号为G08，是第三代宝马X3的纯电动版本，于2020年在中国沈阳开始量产。第二代iX3代号为NA5，于2025年发表，是宝马首款采用NeueKlasse纯电动车架构量产的车型。",
+    "facts": [],
+    "_source": {
+      "wikiTitle": "BMW iX3",
+      "zhTitle": "BMW iX3",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/a/a6/BMW_iX3_50_xDrive_M_Sportpaket_Pro_%28NA5%29_%E2%80%93_f_17052026.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original"
+    },
+    "_todo": [
+      "priceRMB",
+      "topSpeed",
+      "accel",
+      "seats",
+      "facts"
+    ],
+    "_imageBytes": 62210
+  },
+  {
+    "id": "volkswagen-id-polo",
+    "name": "Volkswagen ID. Polo",
+    "brand": "Volkswagen 大众",
+    "country": "德国",
+    "category": "电动车",
+    "year": 2026,
+    "priceRMB": null,
+    "engine": "纯电驱动",
+    "power": "226 马力",
+    "topSpeed": null,
+    "accel": null,
+    "drivetrain": "前驱",
+    "seats": null,
+    "accent": "linear-gradient(135deg,#42275a,#734b6d)",
+    "emoji": "🔌",
+    "summary": "",
+    "description": "",
+    "facts": [],
+    "_source": {
+      "wikiTitle": "Volkswagen ID. Polo",
+      "zhTitle": "",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Volkswagen_ID.Polo_IMG_8361.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original"
+    },
+    "_todo": [
+      "priceRMB",
+      "topSpeed",
+      "accel",
+      "seats",
+      "summary",
+      "description",
+      "facts"
+    ],
+    "_imageBytes": 84834
+  }
+]
