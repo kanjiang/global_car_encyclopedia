@@ -1,1 +1,145 @@
-[]
+[
+  {
+    "id": "volkswagen-id-polo",
+    "name": "Volkswagen ID. Polo",
+    "brand": "Volkswagen 大众",
+    "country": "德国",
+    "category": "电动车",
+    "year": 2026,
+    "priceRMB": null,
+    "engine": "纯电驱动",
+    "power": "226 马力",
+    "topSpeed": null,
+    "accel": null,
+    "drivetrain": "前驱",
+    "seats": null,
+    "accent": "linear-gradient(135deg,#42275a,#734b6d)",
+    "emoji": "🔌",
+    "summary": "",
+    "description": "",
+    "facts": [],
+    "_source": {
+      "wikiTitle": "Volkswagen ID. Polo",
+      "zhTitle": "",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/c/cb/Volkswagen_ID.Polo_IMG_8361.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original"
+    },
+    "_todo": [
+      "priceRMB",
+      "topSpeed",
+      "accel",
+      "seats",
+      "summary",
+      "description",
+      "facts"
+    ],
+    "_imageBytes": 85144
+  },
+  {
+    "id": "hyundai-ioniq-3",
+    "name": "Hyundai Ioniq 3",
+    "brand": "Hyundai 现代",
+    "country": "韩国",
+    "category": "电动车",
+    "year": 2026,
+    "priceRMB": null,
+    "engine": "纯电驱动",
+    "power": null,
+    "topSpeed": null,
+    "accel": null,
+    "drivetrain": "前驱",
+    "seats": null,
+    "accent": "linear-gradient(135deg,#0f2027,#2c5364)",
+    "emoji": "🔌",
+    "summary": "",
+    "description": "",
+    "facts": [],
+    "_source": {
+      "wikiTitle": "Hyundai Ioniq 3",
+      "zhTitle": "",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/3/37/2026_Hyundai_Ioniq_3_N_Line_%28Europe%29_front_view_02.png?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original"
+    },
+    "_todo": [
+      "priceRMB",
+      "power",
+      "topSpeed",
+      "accel",
+      "seats",
+      "summary",
+      "description",
+      "facts"
+    ],
+    "_imageBytes": 22288
+  },
+  {
+    "id": "smart-2",
+    "name": "Smart 2",
+    "brand": "Smart Automobile",
+    "country": "中国",
+    "category": "电动车",
+    "year": 2026,
+    "priceRMB": null,
+    "engine": "纯电驱动",
+    "power": "82 马力",
+    "topSpeed": null,
+    "accel": null,
+    "drivetrain": "后驱",
+    "seats": null,
+    "accent": "linear-gradient(135deg,#c31432,#240b36)",
+    "emoji": "🔌",
+    "summary": "",
+    "description": "",
+    "facts": [],
+    "_source": {
+      "wikiTitle": "Smart 2",
+      "zhTitle": "",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/b/b8/Smart_2_007.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original"
+    },
+    "_todo": [
+      "priceRMB",
+      "topSpeed",
+      "accel",
+      "seats",
+      "summary",
+      "description",
+      "facts"
+    ],
+    "_imageBytes": 84984
+  },
+  {
+    "id": "citro-n-2cv",
+    "name": "Citroën 2CV",
+    "brand": "Citroën 雪铁龙",
+    "country": "法国",
+    "category": "电动车",
+    "year": 2028,
+    "priceRMB": null,
+    "engine": "纯电驱动",
+    "power": null,
+    "topSpeed": null,
+    "accel": null,
+    "drivetrain": null,
+    "seats": null,
+    "accent": "linear-gradient(135deg,#16222a,#3a6073)",
+    "emoji": "🔌",
+    "summary": "",
+    "description": "",
+    "facts": [],
+    "_source": {
+      "wikiTitle": "Citroën 2CV (2028)",
+      "zhTitle": "",
+      "image": "https://upload.wikimedia.org/wikipedia/commons/e/ed/Citro%C3%ABn_2_CV_Concept.jpg?utm_source=en.wikipedia.org&utm_campaign=api&utm_content=original"
+    },
+    "_todo": [
+      "priceRMB",
+      "power",
+      "topSpeed",
+      "accel",
+      "drivetrain",
+      "seats",
+      "summary",
+      "description",
+      "facts"
+    ],
+    "_imageBytes": 74500
+  }
+]
